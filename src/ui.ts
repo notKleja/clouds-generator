@@ -1,3 +1,4 @@
+import { IS_WEB, sendHostMessage } from './platform';
 import { CLOUD_FIELD_ENABLED } from './features';
 import '@rogieking/figui3/src/fig.js';
 import '@rogieking/figui3/src/fig-editor.js';
@@ -56,7 +57,7 @@ let lockedRatio = settings.width / settings.height;
 const bridgeSession = document.querySelector<HTMLMetaElement>(
   'meta[name="clouds-session"]',
 )?.content;
-const post = (message: unknown) => parent.postMessage({ pluginMessage: message }, '*');
+const post = sendHostMessage;
 function status(text: string, error = false) {
   get('status').textContent = text;
   get('status').classList.toggle('error', error);
@@ -77,7 +78,7 @@ function controlsDisabled(value: boolean) {
     )
     .forEach((el) => el.toggleAttribute('disabled', value));
   get('update').toggleAttribute('disabled', value || !selected || selected.locked);
-  get('insert').textContent = value ? 'Rendering…' : 'Insert cloud ↗';
+  get('insert').textContent = value ? 'Rendering…' : IS_WEB ? 'Download PNG' : 'Insert cloud ↗';
   syncAvailability();
   shapeEditor.sync(settings);
   library.syncDisabled();
@@ -317,7 +318,10 @@ function change(patch: Partial<Settings>, commit = true) {
     settings = next;
     if (previousKey !== previewKey(settings)) schedulePreview();
   }
-  if (commit) history.commit(settings);
+  if (commit) {
+    history.commit(settings);
+    if (IS_WEB) post({ type: 'save-draft', settings });
+  }
   sync();
 }
 for (const key of ['seed', 'width', 'height', 'quality', 'opacity'] as const) {
@@ -413,6 +417,7 @@ function restoreRecipe(recipe: Settings) {
   lockedRatio = settings.width / settings.height;
   sync();
   schedulePreview();
+  if (IS_WEB) post({ type: 'save-draft', settings });
 }
 get('undo').onclick = () => {
   shapeEditor.finish();
@@ -477,7 +482,11 @@ function beginRun(label: string): RenderRun {
     get('render-elapsed').textContent = `${((now - run.started) / 1000).toFixed(1)}s`;
     if (!run.sent) return;
     if (now - run.sentAt > 15000) {
-      finishError('Figma has not confirmed completion. Check the canvas before inserting again.');
+      finishError(
+        IS_WEB
+          ? 'The download has not completed. Please try again.'
+          : 'Figma has not confirmed completion. Check the canvas before inserting again.',
+      );
       return;
     }
     if (now - run.lastCheck > 1500) {
@@ -518,7 +527,7 @@ get('cancel-render').onclick = () => {
     deferredSelection = undefined;
     applySelectionState(next, true);
   }
-  status('Rendering canceled. No clouds were changed.');
+  status(IS_WEB ? 'Download canceled.' : 'Rendering canceled. No clouds were changed.');
 };
 function failRun(run: RenderRun, error: unknown) {
   if (activeRun !== run) return;
@@ -592,7 +601,13 @@ async function generate(type: 'insert' | 'update') {
       });
     }
     await beforeSend(run);
-    status(type === 'insert' ? 'Inserting into Figma…' : 'Updating selected clouds…');
+    status(
+      IS_WEB
+        ? 'Preparing PNG download…'
+        : type === 'insert'
+          ? 'Inserting into Figma…'
+          : 'Updating selected clouds…',
+    );
     if (type === 'update' && items.length > 1)
       post({ type: 'update-many', requestId: run.requestId, items });
     else post({ type, requestId: run.requestId, ...items[0] });
@@ -725,6 +740,7 @@ function finishError(message: string) {
   status(message, true);
 }
 window.onmessage = (event) => {
+  if (IS_WEB && event.source !== window) return;
   const msg = event.data?.pluginMessage;
   if (!msg || typeof msg !== 'object') return;
   // Match the controller's per-launch token rather than assuming which host
@@ -747,6 +763,10 @@ window.onmessage = (event) => {
     msg.requestId !== pendingScatter?.requestId
   )
     return;
+  if (IS_WEB && msg.type === 'web-notice') {
+    status(String(msg.message));
+    return;
+  }
   if (msg.type === 'presets') {
     library.receive(msg);
     return;
@@ -794,13 +814,15 @@ window.onmessage = (event) => {
     }
     applySelectionState(msg, msg.recovered === true || msg.action === 'insert-many');
     status(
-      msg.action === 'update-many'
-        ? `${selectedClouds.length} clouds updated.`
-        : msg.action === 'insert-many'
-          ? 'Cloud field inserted.'
-          : msg.action === 'update'
-            ? 'Cloud updated. Size applied; position preserved.'
-            : 'Cloud inserted. Select it anytime to edit its settings.',
+      IS_WEB
+        ? 'PNG download started.'
+        : msg.action === 'update-many'
+          ? `${selectedClouds.length} clouds updated.`
+          : msg.action === 'insert-many'
+            ? 'Cloud field inserted.'
+            : msg.action === 'update'
+              ? 'Cloud updated. Size applied; position preserved.'
+              : 'Cloud inserted. Select it anytime to edit its settings.',
     );
   } else if (msg.type === 'error') {
     finishError(String(msg.message));
@@ -810,6 +832,17 @@ window.addEventListener('focus', () => post({ type: 'selection-request' }));
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) post({ type: 'selection-request' });
 });
+if (IS_WEB) {
+  const theme = window.matchMedia('(prefers-color-scheme: dark)');
+  const applyTheme = () => {
+    document.documentElement.classList.toggle('figma-dark', theme.matches);
+    document.documentElement.classList.toggle('figma-light', !theme.matches);
+  };
+  applyTheme();
+  theme.addEventListener('change', applyTheme);
+  get('insert').textContent = 'Download PNG';
+  get('update').hidden = true;
+}
 installControlCapture();
 sync();
 schedulePreview();

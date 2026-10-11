@@ -2,6 +2,20 @@
 
 An offline Figma Design plugin inspired by [beauhaus/Nephele](https://github.com/beauhaus/Nephele). Generate soft procedural clouds, reshape them in the preview, and regenerate them later from saved layer recipes.
 
+## Web tool
+
+The browser version uses the **same engine, renderer, shadow worker, editing controls, presets, and recipe normalization** as the Figma plugin. Open [Clouds on GitHub Pages](https://notkleja.github.io/clouds-generator/) to generate and download transparent PNGs without Figma.
+
+The web layout has a large desktop preview and a full-size sticky preview on mobile. Shape editing, undo/redo, variations, transparency shadows, gradients, export resolution, progress, and cancellation are shared with the plugin. **Download PNG** replaces the Figma insert action. Drafts, named presets, and seed lock are stored locally in the browser; generation does not upload your cloud or settings. If browser storage is unavailable, generation/downloads and temporary presets still work.
+
+```sh
+npm run build:web   # out/web, ready for static hosting
+npm run test:web    # desktop/mobile, persistence, PNG download and engine parity
+npm run deploy:web # publish built assets to the gh-pages branch
+```
+
+The Pages site uses the `gh-pages` branch root with `.nojekyll`, not a custom CI workflow. Source remains on `main`; only public built assets and license notices are published to `gh-pages`. Relative asset URLs support the `/clouds-generator/` project path. `src/platform.ts` selects the host at build time, `src/browser-host.ts` handles local persistence and downloads, and `web/web.css` changes only the web layout. The procedural/rendering code is not duplicated.
+
 ## Install in Figma Desktop
 
 The repository includes `manifest.json`, `code.js`, and `ui.html`; no build is required to try it.

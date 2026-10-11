@@ -22,7 +22,7 @@ async function ui() {
     write: false,
     minify: true,
     plugins: [figui.plugin],
-    define: { __SHADOW_WORKER__: JSON.stringify(worker.outputFiles[0].text) },
+    define: { __SHADOW_WORKER__: JSON.stringify(worker.outputFiles[0].text), __WEB_APP__: 'false' },
   });
   const [template, css, components, undo, redo] = await Promise.all([
     readFile('src/ui.html', 'utf8'),

@@ -26,7 +26,11 @@
     "test:features": "node tests/features.mjs",
     "build:check": "node scripts/verify-build.mjs --committed",
     "test:shadow-mode": "node tests/shadow-mode.mjs",
-    "test:insertion": "node tests/insertion.mjs"
+    "test:insertion": "node tests/insertion.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "build:all": "npm run build && npm run build:web",
+    "test:web": "npm run build:web && node tests/web.mjs",
+    "deploy:web": "npm run build:web && node scripts/publish-web.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

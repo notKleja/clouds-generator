@@ -1,0 +1,278 @@
+/* Loaded only by the web target; the plugin keeps its original compact layout. */
+html:has(body.web-app) {
+  color-scheme: light;
+  scroll-padding-top: 250px;
+  scroll-padding-bottom: 140px;
+  background: #f4f5f6;
+}
+body.web-app {
+  --web-header-height: 64px;
+  --web-panel-width: 380px;
+  --web-stage-gap: clamp(18px, 2.4vw, 40px);
+  background: #f4f5f6;
+  color: var(--figma-color-text, #292929);
+}
+.web-header {
+  min-height: var(--web-header-height);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--figma-color-bg, #fff);
+}
+.web-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
+}
+.web-brand h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: -0.7px;
+  font-weight: 650;
+}
+.web-brand p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.web-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.web-links a,
+.web-local-note a {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.web-links a:hover,
+.web-local-note a:hover {
+  text-decoration: underline;
+}
+.web-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  transform: translateY(-180%);
+  padding: 10px 14px;
+  border: 1px solid var(--brand);
+  border-radius: 5px;
+  background: #fff;
+  color: #292929;
+}
+.web-skip-link:focus {
+  transform: translateY(0);
+}
+.web-panel {
+  min-width: 0;
+  background: var(--figma-color-bg, #fff);
+}
+.web-app #update,
+.web-app #cloud-field {
+  display: none !important;
+}
+.web-app #plugin-footer .actions #insert {
+  height: 36px;
+  font-size: 12px;
+}
+.web-local-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+.web-local-note a {
+  margin-left: 4px;
+}
+.web-noscript {
+  position: fixed;
+  z-index: 50;
+  top: 90px;
+  left: 24px;
+  right: 24px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+@media (min-width: 900px) {
+  html:has(body.web-app),
+  body.web-app {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  body.web-app {
+    height: 100dvh;
+    display: grid;
+    grid-template-rows: var(--web-header-height) minmax(0, 1fr);
+  }
+  .web-header {
+    padding-left: var(--web-stage-gap);
+    padding-right: 24px;
+  }
+  .web-workspace {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--web-panel-width);
+  }
+  .web-app .preview-slot {
+    height: auto;
+    min-height: 0;
+    min-width: 0;
+    padding: var(--web-stage-gap);
+  }
+  .web-app .preview-header {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    height: 100%;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    z-index: 1;
+  }
+  .web-app .preview-header::after {
+    display: none;
+  }
+  .web-app .preview {
+    height: 100%;
+    min-height: 180px;
+    border-radius: 10px;
+  }
+  .web-app #cloud-preview {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    width: min(720px, calc(100% - 64px));
+    height: min(540px, calc(100% - 128px));
+    transform: translate(-50%, -50%);
+  }
+  .web-app .preview-top,
+  .web-app .preview-bottom {
+    left: 22px;
+    right: 22px;
+  }
+  .web-app .preview-top {
+    top: 18px;
+    font-size: 13px;
+  }
+  .web-app .preview-bottom {
+    bottom: 20px;
+    font-size: 11px;
+  }
+  .web-app #preview-activity {
+    font-size: 10px;
+  }
+  .web-app #shape-edit-preview,
+  .web-app #preview-bg {
+    width: 30px;
+    height: 30px;
+  }
+  .web-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid var(--border);
+  }
+  .web-panel main {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scroll-padding: 16px;
+    padding-bottom: 20px;
+  }
+  .web-app section {
+    padding: 18px 18px;
+  }
+  .web-app #plugin-footer {
+    position: relative;
+    inset: auto;
+    flex: none;
+    width: 100%;
+    padding: 14px 18px 12px;
+    z-index: 10;
+  }
+}
+@media (max-width: 899px) {
+  .web-header {
+    min-height: 64px;
+    padding: 16px;
+  }
+  .web-brand {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .web-brand h1 {
+    font-size: 19px;
+  }
+  .web-brand p {
+    font-size: 10px;
+  }
+  .web-links {
+    gap: 14px;
+    font-size: 11px;
+  }
+  .web-app .preview-slot {
+    height: auto;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--figma-color-bg, #fff);
+  }
+  .web-app .preview-header {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    padding: 12px 16px;
+  }
+  .web-app .preview {
+    height: clamp(202px, 32vh, 280px);
+  }
+  .web-panel main {
+    padding-bottom: calc(142px + env(safe-area-inset-bottom));
+  }
+  .web-app #plugin-footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  .web-app .saved-delete {
+    opacity: 1;
+  }
+}
+@media (max-width: 359px) {
+  .web-brand p {
+    max-width: 125px;
+    line-height: 1.4;
+  }
+  .web-links {
+    gap: 10px;
+    font-size: 10px;
+  }
+}
+
+html.figma-dark:has(body.web-app) {
+  color-scheme: dark;
+  background: var(--figma-color-bg-secondary, #202124);
+}
+.figma-dark body.web-app {
+  background: var(--figma-color-bg-secondary, #202124);
+}
+.web-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
