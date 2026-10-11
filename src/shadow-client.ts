@@ -65,6 +65,7 @@ export async function exportShadowPixels(
     request.width,
     request.height,
     request.gradient,
+    request.mode,
   );
   checkAbort(signal);
   return pixels;

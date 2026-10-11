@@ -181,10 +181,13 @@ function sync() {
     'color',
     'opacity',
     'gradientColor',
+    'shadowMode',
   ] as const)
     setValue(key, settings[key]);
   get('self-shadows').toggleAttribute('checked', settings.selfShadows);
   get('shadow-options').hidden = !settings.selfShadows;
+  get('shadow-hint').textContent =
+    `${settings.shadowMode === 'transparency' ? 'Fade shaded areas into transparency.' : 'Soft internal shading.'} 90° lights from above; 180° from the left.`;
   get('gradient-enabled').toggleAttribute('checked', settings.gradientEnabled);
   get('gradient-options').hidden = !settings.gradientEnabled;
   shapeEditor.sync(settings);
@@ -356,6 +359,12 @@ const updateGradientColor = (commit: boolean) =>
   change({ gradientColor: get<HTMLInputElement>('gradientColor').value.slice(0, 7) }, commit);
 get('gradientColor').addEventListener('input', () => updateGradientColor(false));
 get('gradientColor').addEventListener('change', () => updateGradientColor(true));
+get('shadowMode').addEventListener('change', () =>
+  change({
+    shadowMode:
+      get<HTMLSelectElement>('shadowMode').value === 'transparency' ? 'transparency' : 'shade',
+  }),
+);
 get('self-shadows').addEventListener('change', () =>
   change({ selfShadows: get<HTMLInputElement>('self-shadows').checked }),
 );

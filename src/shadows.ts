@@ -117,6 +117,7 @@ export function shadowPixels(
   width = field.length,
   height = 1,
   gradient?: ShadowGradient,
+  mode: 'shade' | 'transparency' = 'shade',
 ): Uint8ClampedArray {
   const rgb = [1, 3, 5].map((i) => linear(parseInt(color.slice(i, i + 2), 16) / 255)),
     pixels = new Uint8ClampedArray(field.length * 4);
@@ -127,12 +128,15 @@ export function shadowPixels(
   const blend = gradient ? Math.max(0, Math.min(100, gradient.strength)) / 100 : 0;
   for (let i = 0; i < field.length; i++) {
     const t = (blend * Math.floor(i / width)) / Math.max(1, height - 1);
+    const shadow = Math.max(0, Math.min(1, field[i])) * amount;
+    // Transparency mode leaves RGB intact and applies the shadow to alpha.
     // A cool indirect-light floor keeps dark areas luminous rather than black.
     for (let c = 0; c < 3; c++)
       pixels[i * 4 + c] = encode(
-        (rgb[c] * (1 - t) + bottom[c] * t) * (1 - field[i] * amount * [0.68, 0.61, 0.51][c]),
+        (rgb[c] * (1 - t) + bottom[c] * t) *
+          (mode === 'transparency' ? 1 : 1 - shadow * [0.68, 0.61, 0.51][c]),
       );
-    pixels[i * 4 + 3] = 255;
+    pixels[i * 4 + 3] = mode === 'transparency' ? Math.round(255 * (1 - shadow)) : 255;
   }
   return pixels;
 }
@@ -146,4 +150,5 @@ export interface ShadowRequest {
   color: string;
   strength: number;
   gradient?: ShadowGradient;
+  mode?: 'shade' | 'transparency';
 }

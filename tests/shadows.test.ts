@@ -66,3 +66,31 @@ test('a solid slab darkens continuously away from the light without repeated sha
   assert.ok(largest < 0.025, `Lighting has a repeated sampling step: ${largest}`);
   assert.ok(columns[60] > columns[10]);
 });
+
+test('transparency shadows reduce alpha without darkening the cloud color', () => {
+  const field = new Float32Array([0, 0.25, 0.5, 1]);
+  const pixels = shadowPixels(field, '#AABBCC', 100, 4, 1, undefined, 'transparency');
+  assert.deepEqual(
+    Array.from(pixels),
+    [170, 187, 204, 255, 170, 187, 204, 191, 170, 187, 204, 128, 170, 187, 204, 0],
+  );
+  const half = shadowPixels(field, '#AABBCC', 50, 4, 1, undefined, 'transparency');
+  assert.deepEqual([half[3], half[7], half[11], half[15]], [255, 223, 191, 128]);
+  assert.deepEqual(
+    shadowPixels(field, '#AABBCC', 0, 4, 1, undefined, 'transparency'),
+    shadowPixels(new Float32Array(4), '#AABBCC', 0),
+  );
+});
+
+test('transparency shadows preserve gradient colors while masking opacity', () => {
+  const pixels = shadowPixels(
+    new Float32Array([0.5, 0.5]),
+    '#FF0000',
+    100,
+    1,
+    2,
+    { color: '#0000FF', strength: 100 },
+    'transparency',
+  );
+  assert.deepEqual(Array.from(pixels), [255, 0, 0, 128, 0, 0, 255, 128]);
+});

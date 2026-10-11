@@ -688,3 +688,12 @@ body.busy #plugin-footer .actions {
     transform: rotate(360deg);
   }
 }
+
+.shadow-style fig-dropdown {
+  flex: 1;
+  min-width: 0;
+}
+.shadow-style > label {
+  flex-basis: 86px;
+  width: 86px;
+}

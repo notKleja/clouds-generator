@@ -21,6 +21,7 @@ self.onmessage = (event: MessageEvent<ShadowRequest>) => {
       request.width,
       request.height,
       request.gradient,
+      request.mode,
     );
     self.postMessage({ pixels: pixels.buffer }, { transfer: [pixels.buffer] });
   } catch (error) {

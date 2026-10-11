@@ -23,6 +23,7 @@ export interface Settings {
   gradientEnabled: boolean;
   gradientColor: string;
   gradientStrength: number;
+  shadowMode: 'shade' | 'transparency';
   selfShadows: boolean;
   shadowStrength: number;
   lightAngle: number;
@@ -47,6 +48,7 @@ export const DEFAULTS: Settings = {
   gradientEnabled: false,
   gradientColor: '#8FABC5',
   gradientStrength: 50,
+  shadowMode: 'shade',
   selfShadows: false,
   shadowStrength: 40,
   lightAngle: 135,
@@ -159,6 +161,7 @@ export function normalize(input: unknown): Settings {
     gradientEnabled: s.gradientEnabled === true,
     gradientColor: color(s.gradientColor, d.gradientColor),
     gradientStrength: bounded(s.gradientStrength, d.gradientStrength, 0, 100),
+    shadowMode: s.shadowMode === 'transparency' ? 'transparency' : 'shade',
     selfShadows: s.selfShadows === true,
     shadowStrength: bounded(s.shadowStrength, d.shadowStrength, 0, 100),
     lightAngle: bounded(s.lightAngle, d.lightAngle, 0, 360),

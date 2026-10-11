@@ -142,6 +142,7 @@ function maskFor(settings: Settings): Promise<Mask> {
 function shadedMask(mask: Mask, s: Settings): HTMLCanvasElement {
   const key = [
     s.selfShadows,
+    s.shadowMode,
     s.lightAngle,
     s.shadowStrength,
     s.color,
@@ -187,6 +188,7 @@ function shadedMask(mask: Mask, s: Settings): HTMLCanvasElement {
           shade.width,
           shade.height,
           s.gradientEnabled ? { color: s.gradientColor, strength: s.gradientStrength } : undefined,
+          s.shadowMode,
         ),
       ),
       shade.width,
@@ -324,6 +326,7 @@ export async function rasterize(
         angle: settings.lightAngle,
         color: settings.color,
         strength: settings.selfShadows ? settings.shadowStrength : 0,
+        mode: settings.shadowMode,
         gradient: settings.gradientEnabled
           ? { color: settings.gradientColor, strength: settings.gradientStrength }
           : undefined,

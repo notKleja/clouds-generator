@@ -19,8 +19,8 @@ Close and rerun an already-open plugin after updating its build. The existing pl
 - **Keep seed when switching presets** retains the current seed while comparing styles. The preference persists between sessions. **Shuffle** and **Variations** intentionally choose new seeds.
 - **Edit shape**, or the curve icon in the preview, reveals five handles. Drag to push or pull nearby billows. Arrow keys nudge a focused handle; Shift moves farther; Esc cancels a drag. Each drag is one Undo step. **Reset shape** clears only handle edits.
 - Shape handles fade while hovering over sliders, inputs, or the existing color picker. Active handle drags and keyboard editing remain visible.
-- **Self shadows** adds directional interior shading. Amount and Light direction control it; 90° lights from above and 180° from the left. Shadows are off by default.
-- **Vertical color gradient** blends the cloud's main color toward a base tint. The gradient and shadows preserve transparency and can be combined.
+- **Self shadows** adds directional interior shading. Amount and Light direction control it; 90° lights from above and 180° from the left. **Shadow style** switches between the default **Dark shading** and **Transparency mask**, which fades shadowed regions into transparency while preserving their color. Shadows are off by default.
+- **Vertical color gradient** blends the cloud's main color toward a base tint. The gradient can be combined with either shadow style. Dark shading preserves the alpha silhouette; transparency masking reduces opacity in shaded areas.
 - **Undo/Redo** tracks edits locally, grouping slider and shape drags into one step. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z work outside text inputs. Selecting another cloud or inserting a new cloud starts a new history.
 
 The full-size preview stays pinned while the controls scroll. A bottom divider and soft shadow fade in when content passes beneath it. Preview background color and checkerboard affect only this surface, never exported images or layer history.
