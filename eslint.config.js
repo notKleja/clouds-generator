@@ -1,36 +1,30 @@
-const eslint = require('@eslint/js')
-const tseslint = require('typescript-eslint')
-const figmaPlugin = require('@figma/eslint-plugin-figma-plugins')
+const eslint = require('@eslint/js');
+const tseslint = require('typescript-eslint');
+const figmaPlugin = require('@figma/eslint-plugin-figma-plugins');
+const globals = require('globals');
 
 module.exports = tseslint.config(
+  { ignores: ['code.js', 'ui.html', 'out/**', 'dist/**', 'artifacts/**', 'node_modules/**'] },
   eslint.configs.recommended,
-  // @typescript-eslint/recommended-type-checked is too aggressive for
-  // widget code...it doesn't seem to like JSX element return values or
-  // unbundling the `widget` object for use* hooks. So we'll use
-  // tseslint.configs.recommended instead.
   tseslint.configs.recommended,
   {
-    plugins: {
-      '@figma/figma-plugins': figmaPlugin,
-    },
+    files: ['code.ts', 'src/**/*.ts', 'tests/**/*.ts', 'tests/*.mjs', 'scripts/*.mjs'],
     rules: {
-      ...figmaPlugin.configs.recommended.rules,
-      // allow underscore-prefixing of unused variables
       '@typescript-eslint/no-unused-vars': [
         'error',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-        },
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
     },
   },
   {
-    files: ['tests/*.mjs'],
-    languageOptions: { globals: { ...require('globals').node, ...require('globals').browser } },
+    files: ['code.ts'],
+    plugins: { '@figma/figma-plugins': figmaPlugin },
+    rules: { ...figmaPlugin.configs.recommended.rules },
   },
   {
-    ignores: ['code.js', 'dist', 'eslint.config.js'],
+    files: ['tests/*.mjs', 'scripts/check-figui.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
-)
+  { files: ['scripts/*.mjs', 'eslint.config.js'], languageOptions: { globals: globals.node } },
+  { files: ['eslint.config.js'], rules: { '@typescript-eslint/no-require-imports': 'off' } },
+);

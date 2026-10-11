@@ -6,13 +6,26 @@
   "capabilities": [],
   "enableProposedApi": false,
   "documentAccess": "dynamic-page",
-  "editorType": [
-    "figma"
-  ],
+  "editorType": ["figma"],
   "ui": "ui.html",
   "networkAccess": {
-    "allowedDomains": [
-      "none"
-    ]
-  }
+    "allowedDomains": ["none"]
+  },
+  "menu": [
+    {
+      "name": "Open cloud generator",
+      "command": "open"
+    },
+    {
+      "name": "Insert random cloud",
+      "command": "random"
+    }
+  ],
+  "relaunchButtons": [
+    {
+      "command": "edit",
+      "name": "Edit cloud",
+      "multipleSelection": true
+    }
+  ]
 }

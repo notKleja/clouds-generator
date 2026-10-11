@@ -12,6 +12,16 @@
   <section class="preset-section">
     <div class="section-heading"><h2>Cloud type</h2><fig-button id="reset" variant="ghost" size="compact">Reset</fig-button></div>
     <div id="presets" class="presets" aria-label="Cloud presets"></div>
+    <div class="seed-lock-row"><fig-switch id="seed-lock">Keep seed when switching presets</fig-switch></div>
+    <details id="saved-library"><summary>Saved presets <span class="muted" id="saved-count">0</span></summary>
+      <div class="preset-save-row"><input id="preset-name" type="text" maxlength="48" placeholder="Preset name" aria-label="Preset name"><fig-button id="save-preset" variant="secondary">Save preset</fig-button></div>
+      <p id="saved-empty" class="hint">Save the current cloud, including shape and lighting.</p>
+      <div id="saved-presets" class="presets saved-grid"></div>
+    </details>
+    <details id="variation-library"><summary>Variations <span class="muted">Explore seeds</span></summary>
+      <fig-button id="generate-variations" variant="secondary">Generate 6 variations</fig-button>
+      <div id="variations" class="variation-grid"></div><p id="variation-status" class="hint" aria-live="polite"></p>
+    </details>
   </section>
   <section aria-label="Cloud appearance">
     <div class="section-heading"><h2>Appearance</h2><div class="history-actions"><fig-button id="undo" variant="ghost" icon aria-label="Undo change" title="Undo change (⌘Z / Ctrl+Z)" disabled><!-- UNDO_ICON --></fig-button><fig-button id="redo" variant="ghost" icon aria-label="Redo change" title="Redo change (⌘⇧Z / Ctrl+Shift+Z)" disabled><!-- REDO_ICON --></fig-button></div></div>
@@ -22,6 +32,8 @@
     <fig-field direction="horizontal"><label>Seed</label><div class="seed-row"><fig-input-number id="seed" value="992" min="0" max="999999" aria-label="Seed"></fig-input-number><fig-button id="randomize" variant="secondary" size="compact">Shuffle</fig-button></div></fig-field>
     <div class="shadow-toggle"><fig-switch id="self-shadows">Self shadows</fig-switch><span class="muted">Optional</span></div>
     <div id="shadow-options" hidden><div id="shadow-controls"></div><p class="hint">Soft internal shading. 90° lights from above; 180° from the left.</p></div>
+    <div class="shadow-toggle"><fig-switch id="gradient-enabled">Vertical color gradient</fig-switch></div>
+    <div id="gradient-options" hidden><fig-field direction="horizontal"><label>Base tint</label><fig-input-color id="gradientColor" value="#8FABC5" text alpha="false" picker-mode="solid" picker-dialog-position="center" aria-label="Cloud base tint"></fig-input-color></fig-field><div id="gradient-controls"></div></div>
     <details id="texture"><summary>Texture <span class="muted">Fine-tune the noise</span></summary><div id="texture-controls"></div></details>
   </section>
   <section aria-label="Output settings">
@@ -31,7 +43,11 @@
     <p class="hint">Clouds always export with a transparent background.</p>
     <p class="hint" id="export-info">2000 × 1400 px · Transparent PNG</p>
   </section>
+  <section aria-label="Cloud field"><div class="section-heading"><h2>Cloud field</h2><span class="muted">Scatter clouds</span></div>
+    <div class="scatter-row"><fig-field direction="horizontal"><label>Count</label><fig-input-number id="scatter-count" value="8" min="1" max="24" aria-label="Cloud field count"></fig-input-number></fig-field><fig-button id="scatter" variant="secondary">Insert cloud field</fig-button></div>
+    <p class="hint">Vary seeds and sizes across the selected frame or selection bounds. With nothing selected, create a field around the viewport center.</p>
+  </section>
 </main>
-<fig-footer id="plugin-footer"><div id="status" role="status" aria-live="polite">Ready to create a little atmosphere.</div><div class="actions"><fig-button id="update" variant="secondary" disabled title="Select a cloud made with this plugin">Update selected</fig-button><fig-button id="insert" variant="primary">Insert cloud ↗</fig-button></div></fig-footer>
+<fig-footer id="plugin-footer"><div id="status" role="status" aria-live="polite">Ready to create a little atmosphere.</div><div id="render-progress" hidden><span class="render-spinner" aria-hidden="true"></span><span id="render-elapsed" role="status" aria-live="off">0.0s</span><fig-button id="cancel-render" variant="secondary">Cancel</fig-button></div><div class="actions"><fig-button id="update" variant="secondary" disabled title="Select a cloud made with this plugin">Update selected</fig-button><fig-button id="insert" variant="primary">Insert cloud ↗</fig-button></div></fig-footer>
 <script>/* SCRIPT */</script>
 </body></html>

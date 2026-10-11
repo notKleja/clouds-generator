@@ -1,80 +1,103 @@
 # Clouds generator
 
-A local Figma Design plugin inspired by [beauhaus/Nephele](https://github.com/beauhaus/Nephele). Creates procedural, soft-edged clouds entirely offline.
+An offline Figma Design plugin inspired by [beauhaus/Nephele](https://github.com/beauhaus/Nephele). Generate soft procedural clouds, reshape them in the preview, and regenerate them later from saved layer recipes.
 
 ## Install in Figma Desktop
 
-The build is included; no terminal setup is needed to try it.
+The repository includes `manifest.json`, `code.js`, and `ui.html`; no build is required to try it.
 
 1. Open a Figma Design file.
 2. Choose **Plugins → Development → Import plugin from manifest…**.
-3. Select `manifest.json` in this folder.
-4. Run **Plugins → Development → Clouds generator**.
+3. Select this folder's `manifest.json`.
+4. Run **Clouds generator → Open cloud generator**.
 
-If this starter plugin was already registered, close and rerun it to load the updated build. The original plugin ID is preserved.
+Close and rerun an already-open plugin after updating its build. The existing plugin ID is preserved. Selecting a generated cloud also exposes **Edit cloud** through Figma's relaunch controls. The **Insert random cloud** menu command renders through a hidden UI and inserts without opening the panel; errors reveal the panel.
 
-## Use
+## Shape and appearance
 
-- Pick Cumulus, Cotton, Wispy, Haze, Storm, or Stratus.
-- Click **Edit shape** (or the curve icon in the preview) to reveal five handles. Drag to push or pull nearby billows. Arrow keys nudge a focused point; Shift moves farther. A drag is one Undo step; Esc cancels the current drag. **Reset shape** clears only the handle edits. Shapes are saved on inserted clouds and restored when selected.
-- Adjust puffiness, softness, cloud color, opacity, or seed. **Shuffle** changes the seed without discarding your settings.
-- Enable **Self shadows** for soft darker interiors, with Amount and Light direction controls. It is off by default; 90° lights from above and 180° from the left.
-- Expand **Texture** for turbulence, noise frequency, detail, and spread.
-- Use **Undo/Redo** to step through local edits. A slider drag is one history step; selecting another cloud or inserting a new copy starts a fresh history. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z work when a text field is not being edited.
-- Choose **Square**, **Wide**, or **Portrait** from Quick size, or enter dimensions directly. The chain button locks the current aspect ratio while either dimension changes.
-- Width changes the number and spacing of seeded billows; height changes their upward growth. Set the cloud width and height, then choose a separate 1×/2×/3× resolution multiplier. Exports are limited to 4096 pixels per side and 16 megapixels.
-- Use **Preview background** to choose a solid color with the styled FigUI3 picker, or enable **Transparent preview** for a checkerboard. These controls affect only the preview; PNG exports are always transparent.
-- Click **Insert cloud**. To edit one later, select a generated cloud and reopen the plugin. **Update selected** applies the requested width and height while preserving its position. If it was resized externally while the plugin was open, reselect it first to refresh its dimensions.
+- Choose Cumulus, Cotton, Wispy, Haze, Storm, or Stratus, then adjust puffiness, softness, color, opacity, and texture.
+- **Keep seed when switching presets** retains the current seed while comparing styles. The preference persists between sessions. **Shuffle** and **Variations** intentionally choose new seeds.
+- **Edit shape**, or the curve icon in the preview, reveals five handles. Drag to push or pull nearby billows. Arrow keys nudge a focused handle; Shift moves farther; Esc cancels a drag. Each drag is one Undo step. **Reset shape** clears only handle edits.
+- Shape handles fade while hovering over sliders, inputs, or the existing color picker. Active handle drags and keyboard editing remain visible.
+- **Self shadows** adds directional interior shading. Amount and Light direction control it; 90° lights from above and 180° from the left. Shadows are off by default.
+- **Vertical color gradient** blends the cloud's main color toward a base tint. The gradient and shadows preserve transparency and can be combined.
+- **Undo/Redo** tracks edits locally, grouping slider and shape drags into one step. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z work outside text inputs. Selecting another cloud or inserting a new cloud starts a new history.
 
-The preview updates while sliders move, stays pinned at its full size while scrolling. Its Live/Updating indicator shows pending preview work. The checkerboard toggle remains available in the fixed preview header. Invalid output dimensions disable Insert/Update with an inline explanation; Update stays available for a recognized, unlocked selected cloud, including when you want to regenerate it without changing settings. The checkerboard toggle and background color affect only the preview surface; they do not enter cloud history or the saved layer recipe.
+The full-size preview stays pinned while the controls scroll. A bottom divider and soft shadow fade in when content passes beneath it. Preview background color and checkerboard affect only this surface, never exported images or layer history.
 
-## UI components
+## Presets and variations
 
-Controls use bundled **FigUI3 11.1.4** components: `fig-slider`, `fig-input-number`, `fig-input-color`, `fig-switch`, `fig-dropdown`, `fig-field`, `fig-button`, `fig-footer`, and the existing `fig-fill-picker` from the Editor module. The supplied fill-picker is styled rather than reimplemented. Undo/Redo use Lucide SVG assets. The controls follow Figma UI3 styling and the host's light/dark theme tokens. No runtime CDN or network permission is needed.
+**Saved presets** stores up to 12 named recipes, including shape, size, color, and lighting. Name the current recipe and choose **Save preset**. Select a saved tile to apply it; its trash button removes it. Data is stored in Figma client storage, not sent to a server.
 
-These are reusable Figma-style web components, not Figma's internal editor widgets. Official PropsKit is currently documented for Figma-hosted generative plugins only. This deliverable retains the local development-plugin format and existing ID.
+**Variations** generates six seed previews from the current recipe on demand. Select a thumbnail to adopt that seed. Other appearance settings are retained.
 
-## Rendering and editability
+## Insert, update, and scatter
 
-Nephele's core technique is fractal noise displacing a blurred silhouette. This implementation uses a newly written seeded cluster of ellipses, SVG Gaussian blur, and explicit fractal-noise/displacement filters. It is inspired by the original approach, not a pixel-identical port of its viewport-dependent CSS.
+- **Insert cloud** places the cloud 48 pixels to the right of the selection's bounds, or at the viewport center when nothing is selected.
+- Select a generated cloud and choose **Update selected** to replace its image in place. Update also works without changing any controls, so old clouds can be regenerated with the current renderer.
+- Selecting several clouds changes the action to **Update N clouds**. Only edited fields are applied across the selection; each cloud retains its own seed, shape, size, and other untouched settings. An unchanged batch regenerates each original recipe. Up to 24 clouds and 32 million exported pixels are allowed per batch.
+- Image-filled rectangles, ellipses, and frames with valid recipes are editable. Selecting a group or frame discovers its cloud descendants. Duplicate references are removed, ancestor locks are respected, and unrelated layers are ignored with an explanation. Arbitrary images without a cloud recipe are not treated as generated clouds.
+- **Cloud field** scatters 1–24 clouds with varied seeds and scales within a selected frame or the combined selection bounds. With no selection, it uses a field around the viewport center. Bounds must be at least 64×64. Dense fields may overlap, but each cloud stays inside the bounds.
 
-Clouds are **PNG image fills**, not editable vector paths. Their versioned settings are stored on the Figma layer, so the plugin can regenerate them. Width/height regenerate the seeded silhouette before blur and turbulence: width changes billow count and spacing, while height develops the upper billows and base depth. The default 1000 × 700 recipe preserves the original plugin silhouette. The result is then tightly cropped and fitted to the requested layer dimensions, so extreme proportions still affect its appearance; this is not a physical cloud simulation. A cached alpha mask detects the visible bounds (alpha greater than 1/255) with a small edge guard, removing the old empty canvas margins. All PNG output retains transparency, including when reopening a legacy recipe that once included a sky. The resolution multiplier increases PNG pixel density without changing layer dimensions. Updating applies the dimensions shown in the plugin.
+Batch actions validate every image and target before changing document nodes. A failed batch rolls back its changes. If the selection or dimensions change during rendering, update/scatter refuses the stale operation. Selection refreshes when returning to the plugin, preserving pending edits and the original update target.
 
-Optional self shadows use a bounded 2D optical-thickness estimate with a continuous directional pass and warped gradient noise. The light pass follows neighboring density samples instead of layering spaced shadow copies. Its proportions match the output so the light direction stays consistent when resizing. Shadows tint the interior without altering the alpha silhouette. The shading field is cached separately from the geometry, and zero strength produces the same output as disabling shadows.
+Rendering shows its current stage and elapsed time. **Cancel** stops pending export work and prevents its insertion or update. Cancel becomes unavailable once the completed images are sent to Figma for the short document-application step.
+
+## Dimensions and export quality
+
+Width changes the seeded billow count and spacing; height develops their upward growth. The original default silhouette is preserved until a shape control changes it. The generated cloud is tightly cropped and fitted to the requested dimensions, so extreme proportions still affect its appearance.
+
+Quick sizes and the aspect-ratio lock simplify resizing. A separate 1×/2×/3× resolution multiplier changes PNG density without changing layer dimensions. Each export is limited to 4096 pixels per side and 16 megapixels. Aggregate batches are limited to 32 megapixels and 128 MB of encoded image data.
+
+Clouds are transparent PNG image fills, not editable vector paths. Their versioned recipes are stored on the layer. Version 1 recipes migrate to version 2 with current defaults; malformed or future versions are reported explicitly rather than guessed.
+
+## Rendering and UI implementation
+
+The cloud uses a seeded ellipse silhouette, Gaussian blur, fractal noise, and displacement. This is an independent implementation inspired by Nephele's technique, not a pixel-identical port of its viewport-dependent CSS.
+
+The preview uses a bounded canvas, a 500×350 geometry sample, and an eight-entry shape cache. Paint, lighting, background, and resolution changes reuse the geometry. Frame-coalesced edits keep one preview in flight and only the latest pending recipe. Same-size repaints reuse the canvas backing store.
+
+Exports render the SVG again at output resolution. Quality ≥2 or an output side above 1200 pixels triggers full-filter-frame crop refinement up to 2048 pixels, retaining alpha-1 wisps and the union with the preview bounds. Preview lighting uses at most 240×180 samples; export lighting scales up to a 1024-pixel long side. Export shadow math runs in a bundled Worker, released on completion, failure, or cancellation. Lighting uses a continuous directional pass and warped gradient noise; base tint blends in linear light before shadow modulation.
+
+Browser SVG decoding, canvas readback, and PNG encoding still use browser APIs outside the shadow worker. Progress yields between stages, cancellation is checked throughout, and canceled native work is discarded when it returns. Export limits and worker/canvas bounds keep resource usage predictable.
+
+The interface uses bundled **FigUI3 11.1.4** components and Figma theme tokens. Its existing Editor fill picker is styled, not rebuilt. Undo/Redo are Lucide SVG assets. The build retains only needed component registrations plus their dependencies and prunes unrelated component CSS while preserving dynamic picker/Editor/Lab styles. No runtime CDN or network permission is required. These are Figma-style web components, not Figma's private internal widgets.
 
 ## Development
 
-Node.js 22 or newer recommended.
+Node.js **22.13+ or 24+** is required by the upgraded tooling.
 
 ```sh
 npm ci
-npm run build
-npm run watch
+npm run format
 npm run check
-npm run test:browser
-npm run test:responsiveness
-npm run test:preview-controls
-npm run test:procedural
-npm run test:shape
-npm run test:update
+npm run test:e2e
+npm run build:verify
+npm run package
 ```
 
-Browser tests use installed Google Chrome on macOS by default. Set `CHROME_PATH` to another compatible Chromium executable. They write screenshots, sample PNGs, and `artifacts/browser-results.json`. No Figma account is used by these tests.
+- `check`: split typechecks, lint, unit tests, and build.
+- `test:e2e`: browser rendering, responsiveness, preview/picker controls, procedural parity, shaping, integrated updates, high-resolution worker exports, FigUI3 integrity, and all new feature workflows.
+- `build:verify`: compares two builds byte-for-byte.
+- `build:check`: additionally fails if the build differs from committed `code.js` or `ui.html`; run after committing the intended build.
+- `format:check`: checks Prettier formatting without changing files.
+- `watch`: rebuilds controller, UI, and worker sources during development.
 
-The preview uses a bounded canvas and an eight-entry shape cache. Color, opacity, background, shadows and resolution changes reuse the mask; width/height edits generate a new mask in one pass; edits are coalesced on animation frames with one render in flight and only the latest pending recipe. Same-size repaints reuse the canvas backing store. Changing only export resolution does not repaint the preview. Exports re-render the SVG at final resolution rather than enlarging the preview bitmap.
+The controller typecheck has no DOM library; UI and worker contexts are checked separately. Browser tests use installed Google Chrome on macOS by default; set `CHROME_PATH` for another Chromium executable. No CI workflow is installed, as requested.
 
-Pointer capture keeps slider drags and number scrubbing active outside the control and plugin frame. Releasing, cancelling, losing focus, or hiding the page ends the gesture cleanly. Number scrubbing uses the existing FigUI3 Alt-drag behavior.
+Build reports, screenshots, PNGs, test results, and the installable ZIP are written beneath **`out/artifacts/`**. Package staging is **`out/dist/`**. The entire `out/` directory is ignored and disposable; old `artifacts/` and `dist/` outputs are not automatically deleted. `npm run package` includes the manifest, current build, README, and third-party notices.
 
-Source: `src/shape-editor.ts` (preview handles and gesture coordinates), `src/drag.ts` (pointer continuity), `src/settings.ts` (transparent export recipe boundary), `src/interaction.ts` (preview scheduler, local history and ratio helpers), `src/render.ts` (mask cache, alpha crop, preview and export), `src/cloud.ts` (recipe/rendering), `src/shadows.ts` (optional directional interior shading), `src/ui.ts`, `src/ui.html`, `src/ui.css` (panel), and `code.ts` (Figma controller). `scripts/build.mjs` bundles everything into `code.js` and `ui.html`. Edit source files, not the generated UI.
+Tooling upgrades use compatible stable releases. TypeScript is on 6.0 because the current typescript-eslint parser declares support below 6.1; upgrading to TypeScript 7 requires compatible parser support first.
 
 ## Verification boundary
 
-Automated tests cover settings validation, deterministic generation, image limits, insertion/update controller behavior using a Figma mock, selection races, persistence timing, actual browser PNG rendering, UI components, light/dark layouts, and full-size sticky preview scrolling. Shape tests cover live dragging, outside-frame pointer capture, cancellation, undo/redo, persisted edits, full-size sticky mode, and grabbing a handle while a delayed preview is pending. The procedural suite compares default alpha pixels against a fixture from the published baseline, verifies resized geometry differs from a bitmap stretch, and checks that shadows preserve transparency. The update integration test connects the built UI inside a real iframe to the actual plugin controller with a simulated Figma API. It checks PNG fill replacement on the same node, host-message delivery, pending preferences, missed selection recovery, draft preservation, and resize conflicts. Live Figma import and canvas behavior are left to the user as requested.
+Unit tests cover normalization, migrations, deterministic generation, batching, transactional rollback, placement, relaunch metadata, menu commands, persistence, and memory limits. Integrated browser tests run the actual UI and controller with a simulated Figma API, checking real PNG replacement on selected nodes, message delivery, selection races, presets, variations, scatter, gradients, and cancellation.
+
+Renderer checks cover original silhouette parity, transparent alpha, export-specific shadow sampling, worker cleanup, and high-resolution wisps. Visual checks supplement these tests. Live Figma canvas behavior and host-specific Worker policy still require verification in Figma itself.
 
 ## References
 
 - [Nephele](https://github.com/beauhaus/Nephele), studied at commit `fe0338967426f15d9d9ed54b9bf7bbeb6d64ad43`.
-- [FigUI3](https://github.com/rogie/figui3), by Rogie King; upstream Core/Editor/Lab notices included in `THIRD_PARTY_NOTICES.md`.
+- [FigUI3](https://github.com/rogie/figui3), by Rogie King; Core/Editor/Lab notices are in `THIRD_PARTY_NOTICES.md`.
 - [Figma CSS variables and theming](https://developers.figma.com/docs/plugins/css-variables/).
 - [Figma UI lifecycle](https://developers.figma.com/docs/plugins/creating-ui/).
-- [Figma PropsKit availability](https://developers.figma.com/docs/figma-mcp-server/generative-plugins-and-shaders/).
