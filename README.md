@@ -56,6 +56,7 @@ npm run test:responsiveness
 npm run test:preview-controls
 npm run test:procedural
 npm run test:shape
+npm run test:update
 ```
 
 Browser tests use installed Google Chrome on macOS by default. Set `CHROME_PATH` to another compatible Chromium executable. They write screenshots, sample PNGs, and `artifacts/browser-results.json`. No Figma account is used by these tests.
@@ -68,7 +69,7 @@ Source: `src/shape-editor.ts` (preview handles and gesture coordinates), `src/dr
 
 ## Verification boundary
 
-Automated tests cover settings validation, deterministic generation, image limits, insertion/update controller behavior using a Figma mock, selection races, persistence timing, actual browser PNG rendering, UI components, light/dark layouts, and full-size sticky preview scrolling. Shape tests cover live dragging, outside-frame pointer capture, cancellation, undo/redo, persisted edits, full-size sticky mode, and grabbing a handle while a delayed preview is pending. The procedural suite compares default alpha pixels against a fixture from the published baseline, verifies resized geometry differs from a bitmap stretch, and checks that shadows preserve transparency. Live Figma import and canvas behavior are left to the user as requested.
+Automated tests cover settings validation, deterministic generation, image limits, insertion/update controller behavior using a Figma mock, selection races, persistence timing, actual browser PNG rendering, UI components, light/dark layouts, and full-size sticky preview scrolling. Shape tests cover live dragging, outside-frame pointer capture, cancellation, undo/redo, persisted edits, full-size sticky mode, and grabbing a handle while a delayed preview is pending. The procedural suite compares default alpha pixels against a fixture from the published baseline, verifies resized geometry differs from a bitmap stretch, and checks that shadows preserve transparency. The update integration test connects the built UI inside a real iframe to the actual plugin controller with a simulated Figma API. It checks PNG fill replacement on the same node, host-message delivery, pending preferences, missed selection recovery, draft preservation, and resize conflicts. Live Figma import and canvas behavior are left to the user as requested.
 
 ## References
 

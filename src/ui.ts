@@ -209,11 +209,21 @@ get('insert').onclick = () => { void generate('insert'); };
 get('update').onclick = () => { void generate('update'); };
 function applySelection(value: Selected, load: boolean) {
   if (busy && load) { deferredSelection = value; return; }
-  shapeEditor.finish();
-  const changed = selected?.id !== value?.id;
+  const previous = selected;
+  const changed = previous?.id !== value?.id;
+  const refreshed = previous && value && (previous.width !== value.width || previous.height !== value.height || JSON.stringify(cloudRecipe(previous.settings)) !== JSON.stringify(cloudRecipe(value.settings)));
+  if (changed || refreshed || previous?.locked !== value?.locked) shapeEditor.finish();
+  const draft = previous && JSON.stringify(cloudRecipe(settings)) !== JSON.stringify(cloudRecipe(previous.settings));
+  // A focus refresh must neither discard local edits nor silently accept an
+  // external resize as the draft's baseline. The controller checks that size.
+  if (load && !changed && previous && value && draft) {
+    selected = { ...previous, name: value.name, locked: value.locked };
+    sync();
+    return;
+  }
   selected = value;
   if (changed && value && !busy && !load) history.reset(settings);
-  if (load && changed && value && !busy) {
+  if (load && (changed || refreshed) && value && !busy) {
     previews.invalidate(); settings = cloudRecipe(value.settings); history.reset(settings); lockedRatio = settings.width / settings.height; sync(); schedulePreview();
     status(value.locked ? 'Unlock the selected cloud to update it.' : 'Cloud settings loaded. Edit and update, or insert a copy.');
   } else sync();
@@ -224,14 +234,18 @@ function finishError(message: string) {
   status(message, true);
 }
 window.onmessage = event => {
-  if (event.source !== parent) return;
+  // Host-delivered MessageEvents can have no WindowProxy source. Accept those
+  // and local bridge relays, while rejecting messages from unrelated windows.
+  if (event.source && event.source !== parent && event.source !== window) return;
   const msg = event.data?.pluginMessage;
   if (!msg || typeof msg !== 'object') return;
   if (msg.type === 'init') {
     if (busy) { deferredSelection = msg.selection; return; }
-    if (!touched) { shapeEditor.finish(); previews.invalidate(); settings = cloudRecipe(msg.selection?.settings || msg.settings || DEFAULTS); history.reset(settings); lockedRatio = settings.width / settings.height; }
-    selected = msg.selection;
-    sync(); schedulePreview();
+    if (!touched) {
+      shapeEditor.finish(); previews.invalidate(); settings = cloudRecipe(msg.selection?.settings || msg.settings || DEFAULTS);
+      history.reset(settings); lockedRatio = settings.width / settings.height; selected = msg.selection;
+      sync(); schedulePreview();
+    } else applySelection(msg.selection, true);
   } else if (msg.type === 'selection') applySelection(msg.selection, true);
   else if (msg.type === 'done') {
     deferredSelection = undefined; controlsDisabled(false); applySelection(msg.selection, false);
@@ -240,6 +254,10 @@ window.onmessage = event => {
     finishError(String(msg.message));
   }
 };
+window.addEventListener('focus', () => post({ type: 'selection-request' }));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) post({ type: 'selection-request' });
+});
 installControlCapture();
 sync(); schedulePreview(); post({ type: 'ready' });
 

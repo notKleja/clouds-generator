@@ -152,7 +152,12 @@
     var _a;
     if (!raw || typeof raw !== "object") return;
     const msg = raw;
+    if (msg.type === "selection-request") {
+      sendSelection();
+      return;
+    }
     if (msg.type === "ready") {
+      sendSelection();
       let saved;
       try {
         saved = await figma.clientStorage.getAsync(STORAGE_KEY);

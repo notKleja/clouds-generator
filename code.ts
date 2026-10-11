@@ -51,7 +51,13 @@ let saveQueue = Promise.resolve();
 figma.ui.onmessage = async (raw: unknown) => {
   if (!raw || typeof raw !== 'object') return;
   const msg = raw as Record<string, unknown>;
+  if (msg.type === 'selection-request') {
+    sendSelection();
+    return;
+  }
   if (msg.type === 'ready') {
+    // Recognize the selected cloud without waiting for preference storage.
+    sendSelection();
     let saved: unknown;
     try { saved = await figma.clientStorage.getAsync(STORAGE_KEY); } catch { /* Defaults remain usable. */ }
     figma.ui.postMessage({ type: 'init', settings: saved ? normalize(saved) : null, selection: selection() });
