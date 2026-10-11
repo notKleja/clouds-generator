@@ -1,0 +1,73 @@
+# Clouds generator
+
+A local Figma Design plugin inspired by [beauhaus/Nephele](https://github.com/beauhaus/Nephele). Creates procedural, soft-edged clouds entirely offline.
+
+## Install in Figma Desktop
+
+The build is included; no terminal setup is needed to try it.
+
+1. Open a Figma Design file.
+2. Choose **Plugins → Development → Import plugin from manifest…**.
+3. Select `manifest.json` in this folder.
+4. Run **Plugins → Development → Clouds generator**.
+
+If this starter plugin was already registered, close and rerun it to load the updated build. The original plugin ID is preserved.
+
+## Use
+
+- Pick Cumulus, Cotton, Wispy, Haze, Storm, or Stratus.
+- Adjust puffiness, softness, cloud color, opacity, or seed. **Shuffle** changes the seed without discarding your settings.
+- Expand **Texture** for turbulence, noise frequency, detail, and spread.
+- Use **Undo/Redo** to step through local edits. A slider drag is one history step; selecting another cloud or inserting a new copy starts a fresh history. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z work when a text field is not being edited.
+- Choose **Square**, **Wide**, or **Portrait** from Quick size, or enter dimensions directly. The chain button locks the current aspect ratio while either dimension changes.
+- Set the cloud width and height, then choose a separate 1×/2×/3× resolution multiplier. Exports are limited to 4096 pixels per side and 16 megapixels.
+- Use **Preview background** to choose a solid color with the styled FigUI3 picker, or enable **Transparent preview** for a checkerboard. These controls affect only the preview; PNG exports are always transparent.
+- Click **Insert cloud**. To edit one later, select a generated cloud and reopen the plugin. **Update selected** applies the requested width and height while preserving its position. If it was resized externally while the plugin was open, reselect it first to refresh its dimensions.
+
+The preview updates while sliders move, stays visible while scrolling, and shrinks into a compact header. Its Live/Updating indicator shows pending preview work. The checkerboard toggle remains available in the compact header. Invalid output dimensions disable Insert/Update with an inline explanation; Update is also disabled when the selected cloud has no pending changes. The checkerboard toggle and background color affect only the preview surface; they do not enter cloud history or the saved layer recipe.
+
+## UI components
+
+Controls use bundled **FigUI3 11.1.4** components: `fig-slider`, `fig-input-number`, `fig-input-color`, `fig-switch`, `fig-dropdown`, `fig-field`, `fig-button`, `fig-footer`, and the existing `fig-fill-picker` from the Editor module. The supplied fill-picker is styled rather than reimplemented. Undo/Redo use Lucide SVG assets. The controls follow Figma UI3 styling and the host's light/dark theme tokens. No runtime CDN or network permission is needed.
+
+These are reusable Figma-style web components, not Figma's internal editor widgets. Official PropsKit is currently documented for Figma-hosted generative plugins only. This deliverable retains the local development-plugin format and existing ID.
+
+## Rendering and editability
+
+Nephele's core technique is fractal noise displacing a blurred silhouette. This implementation uses a newly written seeded cluster of ellipses, SVG Gaussian blur, and explicit fractal-noise/displacement filters. It is inspired by the original approach, not a pixel-identical port of its viewport-dependent CSS.
+
+Clouds are **PNG image fills**, not editable vector paths. Their versioned settings are stored on the Figma layer, so the plugin can regenerate them. Width/height size the tightly cropped cloud itself, including independent horizontal and vertical scaling. A cached alpha mask detects the visible bounds (alpha greater than 1/255) with a small edge guard, removing the old empty canvas margins. All PNG output retains transparency, including when reopening a legacy recipe that once included a sky. The resolution multiplier increases PNG pixel density without changing layer dimensions. Updating applies the dimensions shown in the plugin.
+
+## Development
+
+Node.js 22 or newer recommended.
+
+```sh
+npm ci
+npm run build
+npm run watch
+npm run check
+npm run test:browser
+npm run test:responsiveness
+npm run test:preview-controls
+```
+
+Browser tests use installed Google Chrome on macOS by default. Set `CHROME_PATH` to another compatible Chromium executable. They write screenshots, sample PNGs, and `artifacts/browser-results.json`. No Figma account is used by these tests.
+
+The preview uses a bounded canvas and an eight-entry shape cache. Size, color, opacity, background and resolution changes reuse the mask; edits are coalesced on animation frames with one render in flight and only the latest pending recipe. Same-size repaints reuse the canvas backing store. Changing only export resolution does not repaint the preview. Exports re-render the SVG at final resolution rather than enlarging the preview bitmap.
+
+Pointer capture keeps slider drags and number scrubbing active outside the control and plugin frame. Releasing, cancelling, losing focus, or hiding the page ends the gesture cleanly. Number scrubbing uses the existing FigUI3 Alt-drag behavior.
+
+Source: `src/drag.ts` (pointer continuity), `src/settings.ts` (transparent export recipe boundary), `src/interaction.ts` (preview scheduler, local history and ratio helpers), `src/render.ts` (mask cache, alpha crop, preview and export), `src/cloud.ts` (recipe/rendering), `src/ui.ts`, `src/ui.html`, `src/ui.css` (panel), and `code.ts` (Figma controller). `scripts/build.mjs` bundles everything into `code.js` and `ui.html`. Edit source files, not the generated UI.
+
+## Verification boundary
+
+Automated tests cover settings validation, deterministic generation, image limits, insertion/update controller behavior using a Figma mock, selection races, persistence timing, actual browser PNG rendering, UI components, light/dark layouts, and compact preview scrolling. Live Figma import and canvas behavior are left to the user as requested.
+
+## References
+
+- [Nephele](https://github.com/beauhaus/Nephele), studied at commit `fe0338967426f15d9d9ed54b9bf7bbeb6d64ad43`.
+- [FigUI3](https://github.com/rogie/figui3), by Rogie King; upstream Core/Editor/Lab notices included in `THIRD_PARTY_NOTICES.md`.
+- [Figma CSS variables and theming](https://developers.figma.com/docs/plugins/css-variables/).
+- [Figma UI lifecycle](https://developers.figma.com/docs/plugins/creating-ui/).
+- [Figma PropsKit availability](https://developers.figma.com/docs/figma-mcp-server/generative-plugins-and-shaders/).
