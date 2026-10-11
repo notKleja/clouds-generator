@@ -37,7 +37,8 @@ try {
   );
   await page.addScriptTag({ content: renderer.outputFiles[0].text });
   const result = await page.evaluate(async () => {
-    const { rasterize, paintPreview, DEFAULTS, PRESETS } = window.renderer;
+    const { rasterize, paintPreview, DEFAULTS: currentDefaults, PRESETS } = window.renderer;
+    const DEFAULTS = { ...currentDefaults, gradientEnabled: false, shadowMode: 'shade' };
     const NativeWorker = window.Worker;
     let created = 0,
       terminated = 0;

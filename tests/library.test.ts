@@ -26,7 +26,8 @@ test('seed lock preserves a seed while changing styles; variations intentionally
 test('gradient is optional, bounded, and cannot inject color data', () => {
   const defaults = normalize({}),
     s = normalize({ gradientEnabled: true, gradientStrength: 400, gradientColor: '<bad>' });
-  assert.equal(defaults.gradientEnabled, false);
+  assert.equal(defaults.gradientEnabled, true);
+  assert.equal(normalize({ gradientEnabled: false }).gradientEnabled, false);
   assert.equal(s.gradientStrength, 100);
   assert.equal(s.gradientColor, '#8FABC5');
 });

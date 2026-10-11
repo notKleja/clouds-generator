@@ -20,8 +20,8 @@ await page.addInitScript(() => {
   window.messages = [];
   window.svgRenders = 0;
   window.previewPaints = 0;
-  const draw = CanvasRenderingContext2D.prototype.drawImage;
-  CanvasRenderingContext2D.prototype.drawImage = function (...args) {
+  const draw = CanvasRenderingContext2D.prototype.clearRect;
+  CanvasRenderingContext2D.prototype.clearRect = function (...args) {
     if (this.canvas.id === 'cloud-preview') window.previewPaints++;
     return draw.apply(this, args);
   };

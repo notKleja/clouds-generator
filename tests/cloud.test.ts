@@ -92,8 +92,9 @@ test('self shadows are opt-in and malformed controls are normalized', () => {
   assert.equal(normalize({ lightAngle: -9 }).lightAngle, 0);
 });
 
-test('legacy and malformed shadow modes keep dark shading; transparency is opt-in', () => {
-  assert.equal(normalize({}).shadowMode, 'shade');
-  assert.equal(normalize({ shadowMode: 'unknown' }).shadowMode, 'shade');
+test('new and malformed shadow modes default to transparency; explicit shading is preserved', () => {
+  assert.equal(normalize({}).shadowMode, 'transparency');
+  assert.equal(normalize({ shadowMode: 'unknown' }).shadowMode, 'transparency');
+  assert.equal(normalize({ shadowMode: 'shade' }).shadowMode, 'shade');
   assert.equal(normalize({ shadowMode: 'transparency' }).shadowMode, 'transparency');
 });

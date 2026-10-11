@@ -1,3 +1,4 @@
+import { CLOUD_FIELD_ENABLED } from './src/features';
 import { cloudRecipe } from './src/settings';
 import { normalize, exportSize, PRESETS, DEFAULTS, type Settings } from './src/cloud';
 import { RECIPE_KEY, readRecipe, writeRecipe } from './src/recipes';
@@ -17,8 +18,25 @@ type Selected = {
 };
 type Preset = { id: string; name: string; settings: Settings };
 const headless = figma.command === 'random';
-figma.showUI(__html__, { width: 360, height: 740, themeColors: true, visible: !headless });
+const bridgeSession = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const uiHTML = __html__.replace(
+  '<!-- CLOUDS_SESSION -->',
+  () => `<meta name="clouds-session" content="${bridgeSession}">`,
+);
+figma.showUI(uiHTML, { width: 360, height: 740, themeColors: true, visible: !headless });
 
+function sendUI(message: Record<string, unknown>): void {
+  figma.ui.postMessage({ ...message, bridgeSession });
+}
+const outcomes = new Map<string, Record<string, unknown>>();
+function sendOutcome(message: Record<string, unknown>, requestId?: unknown): void {
+  const result = { ...message, requestId };
+  if (typeof requestId === 'string' && requestId.length <= 200) {
+    outcomes.set(requestId, result);
+    while (outcomes.size > 16) outcomes.delete(outcomes.keys().next().value!);
+  }
+  sendUI(result);
+}
 function isLocked(node: BaseNode): boolean {
   let current: BaseNode | null = node;
   while (current) {
@@ -83,7 +101,7 @@ function selectionMessage() {
   return { selections, selection, selectionReason };
 }
 function sendSelection() {
-  figma.ui.postMessage({ type: 'selection', ...selectionMessage() });
+  sendUI({ type: 'selection', ...selectionMessage() });
 }
 figma.on('selectionchange', sendSelection);
 
@@ -152,11 +170,13 @@ function apply(node: CloudNode, settings: Settings, imageHash: string): void {
 }
 function reportError(error: unknown, type = 'error', requestId?: unknown): void {
   if (headless) figma.ui.show();
-  figma.ui.postMessage({
-    type,
+  sendOutcome(
+    {
+      type,
+      message: error instanceof Error ? error.message : 'Could not create this cloud. Try again.',
+    },
     requestId,
-    message: error instanceof Error ? error.message : 'Could not create this cloud. Try again.',
-  });
+  );
 }
 let saveQueue = Promise.resolve();
 function saveLast(settings: Settings): void {
@@ -212,7 +232,7 @@ function loadPreferences(): Promise<void> {
   return loadedPreferences;
 }
 function sendPresets(requestId?: unknown): void {
-  figma.ui.postMessage({
+  sendUI({
     type: 'presets',
     presets,
     seedLocked,
@@ -225,6 +245,24 @@ let busy = false;
 figma.ui.onmessage = async (raw: unknown) => {
   if (!raw || typeof raw !== 'object') return;
   const msg = raw as Record<string, unknown>;
+  if (msg.type === 'operation-status') {
+    const outcome = typeof msg.requestId === 'string' ? outcomes.get(msg.requestId) : undefined;
+    if (outcome)
+      sendUI(
+        outcome.type === 'done' ? { ...outcome, ...selectionMessage(), recovered: true } : outcome,
+      );
+    else
+      sendUI({
+        type: 'operation-status',
+        requestId: msg.requestId,
+        state: busy ? 'applying' : 'unknown',
+      });
+    return;
+  }
+  if (!CLOUD_FIELD_ENABLED && (msg.type === 'prepare-scatter' || msg.type === 'insert-many')) {
+    reportError(new Error('Cloud field is disabled.'), 'error', msg.requestId);
+    return;
+  }
   if (msg.type === 'headless-error' && headless) {
     reportError(
       new Error(
@@ -242,7 +280,7 @@ figma.ui.onmessage = async (raw: unknown) => {
   if (msg.type === 'ready') {
     sendSelection();
     if (headless)
-      figma.ui.postMessage({
+      sendUI({
         type: 'headless-insert',
         settings: cloudRecipe({ ...DEFAULTS, seed: Math.floor(Math.random() * 1_000_000) }),
       });
@@ -253,7 +291,7 @@ figma.ui.onmessage = async (raw: unknown) => {
     } catch {
       /* Defaults remain usable. */
     }
-    figma.ui.postMessage({
+    sendUI({
       type: 'init',
       settings: saved ? normalize(saved) : null,
       ...selectionMessage(),
@@ -314,7 +352,7 @@ figma.ui.onmessage = async (raw: unknown) => {
       const jobs = scatterJobs(settings, Number(msg.count), bounds);
       validateBatchBudget(jobs);
       scatterPlan = { id: `scatter-${++sequence}`, signature: selectionSignature(), jobs };
-      figma.ui.postMessage({
+      sendUI({
         type: 'scatter-plan',
         requestId: msg.requestId,
         planId: scatterPlan.id,
@@ -327,6 +365,12 @@ figma.ui.onmessage = async (raw: unknown) => {
   }
   if (!['insert', 'update', 'update-many', 'insert-many'].includes(String(msg.type)) || busy)
     return;
+  const previousOutcome =
+    typeof msg.requestId === 'string' ? outcomes.get(msg.requestId) : undefined;
+  if (previousOutcome) {
+    sendUI(previousOutcome);
+    return;
+  }
   busy = true;
   const created: RectangleNode[] = [];
   const previousSelection = [...figma.currentPage.selection];
@@ -427,12 +471,16 @@ figma.ui.onmessage = async (raw: unknown) => {
     if (created.length) figma.viewport.scrollAndZoomIntoView(targets);
     figma.commitUndo();
     if (msg.type === 'insert-many') scatterPlan = null;
-    figma.ui.postMessage({ type: 'done', action: msg.type, ...selectionMessage() });
-    figma.notify(
-      updating
-        ? `${items.length > 1 ? `${items.length} clouds` : 'Cloud'} updated`
-        : `${items.length > 1 ? `${items.length} clouds` : 'Cloud'} inserted`,
-    );
+    sendOutcome({ type: 'done', action: msg.type, ...selectionMessage() }, msg.requestId);
+    try {
+      figma.notify(
+        updating
+          ? `${items.length > 1 ? `${items.length} clouds` : 'Cloud'} updated`
+          : `${items.length > 1 ? `${items.length} clouds` : 'Cloud'} inserted`,
+      );
+    } catch {
+      /* Notification failure must not roll back a completed insertion. */
+    }
     saveLast(items[0].settings);
     if (headless) figma.closePlugin();
   } catch (error) {
@@ -465,6 +513,8 @@ figma.ui.onmessage = async (raw: unknown) => {
             'The operation failed and Figma could not restore every layer. Use Undo to recover the previous state.',
           )
         : error,
+      'error',
+      msg.requestId,
     );
   } finally {
     busy = false;

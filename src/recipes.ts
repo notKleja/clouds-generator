@@ -25,7 +25,8 @@ export function readRecipe(raw: string): RecipeResult {
       Array.isArray(data.settings)
     )
       throw new Error();
-    return { settings: cloudRecipe(data.settings) };
+    const settings = data.settings as Record<string, unknown>;
+    return { settings: cloudRecipe({ gradientEnabled: false, shadowMode: 'shade', ...settings }) };
   } catch {
     return { settings: null, reason: 'This layer has an invalid or unsupported cloud recipe.' };
   }

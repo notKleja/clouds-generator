@@ -241,53 +241,8 @@ try {
   );
   assert.equal(nodes.length, beforeCancel);
   assert.match(await page.locator('#status').innerText(), /canceled/);
-  const frame = node('FRAME');
-  frame.name = 'Field';
-  frame.width = 900;
-  frame.height = 600;
-  frame.x = 100;
-  frame.y = 200;
-  currentPage.selection = [frame];
-  listeners.selectionchange();
-  await page.waitForFunction(() => document.querySelector('#update').hasAttribute('disabled'));
-  await page.locator('#scatter-count input').fill('3');
-  await page.locator('#scatter-count input').press('Tab');
-  const beforeScatter = nodes.length;
-  await page.getByRole('button', { name: 'Insert cloud field', exact: true }).click();
-  await page.waitForFunction(
-    () => document.querySelector('#status').textContent === 'Cloud field inserted.',
-    null,
-    { timeout: 20000 },
-  );
-  const field = nodes.slice(beforeScatter);
-  assert.equal(field.length, 3);
-  for (const n of field) {
-    assert.ok(n.x >= 100 && n.y >= 200 && n.x + n.width <= 1000 && n.y + n.height <= 800);
-    assert.equal(n.getRelaunchData().edit, 'Edit cloud');
-  }
-  assert.equal(
-    new Set(field.map((n) => JSON.parse(n.getPluginData('clouds-recipe-v1')).settings.seed)).size,
-    3,
-  );
-  const fieldGeometry = field.map((n) => {
-    const s = JSON.parse(n.getPluginData('clouds-recipe-v1')).settings;
-    return [s.seed, s.width, s.height];
-  });
-  await page.locator('#softness fig-input-number input').fill('33');
-  await page.locator('#softness fig-input-number input').press('Tab');
-  await page.getByRole('button', { name: 'Update 3 clouds', exact: true }).click();
-  await page.waitForFunction(
-    () => document.querySelector('#status').textContent === '3 clouds updated.',
-  );
-  assert.deepEqual(
-    field.map((n) => {
-      const s = JSON.parse(n.getPluginData('clouds-recipe-v1')).settings;
-      assert.equal(s.softness, 33);
-      return [s.seed, s.width, s.height];
-    }),
-    fieldGeometry,
-    'Updating a scattered field must preserve its varied geometry',
-  );
+  assert.equal(await page.locator('#cloud-field').isVisible(), false);
+  assert.equal(await page.locator('#scatter').getAttribute('disabled'), '');
   await page.getByRole('button', { name: 'Delete saved preset Soft dawn', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('.saved-preset').length === 0);
   assert.equal(storage.get('clouds-custom-presets-v1').length, 0);
@@ -304,7 +259,7 @@ try {
       'correlated preset save acknowledgements and persistent presets',
       'six adoptable variations',
       'cancel prevents scene mutations',
-      'scatter stays inside selected frame bounds and survives batch style edits',
+      'Cloud field is hidden and disabled',
       'real controller and PNG pipeline',
       'no browser errors',
     ],

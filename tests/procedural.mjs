@@ -67,7 +67,13 @@ try {
       },
       zero: { width: 800, height: 560, selfShadows: true, shadowStrength: 0 },
     })) {
-      const settings = { ...p.DEFAULTS, quality: 1, ...overrides },
+      const settings = {
+          ...p.DEFAULTS,
+          gradientEnabled: false,
+          shadowMode: 'shade',
+          quality: 1,
+          ...overrides,
+        },
         bytes = await p.rasterize(settings),
         img = new Image();
       const url = URL.createObjectURL(new Blob([bytes], { type: 'image/png' }));

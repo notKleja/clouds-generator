@@ -12,13 +12,14 @@ const errors = [];
 async function open(file) {
   const page = await browser.newPage({ viewport: { width: 360, height: 740 } });
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript(() => {
+  await page.addInitScript((legacy) => {
     window.messages = [];
     window.paints = [];
     window.backingWrites = 0;
     window.svgRenders = 0;
-    const draw = CanvasRenderingContext2D.prototype.drawImage;
-    CanvasRenderingContext2D.prototype.drawImage = function (...args) {
+    const method = legacy ? 'drawImage' : 'clearRect';
+    const draw = CanvasRenderingContext2D.prototype[method];
+    CanvasRenderingContext2D.prototype[method] = function (...args) {
       if (this.canvas.id === 'cloud-preview') window.paints.push(performance.now());
       return draw.apply(this, args);
     };
@@ -42,7 +43,7 @@ async function open(file) {
       window.dispatchEvent(
         new MessageEvent('message', { source: window, data: { pluginMessage: m } }),
       );
-  });
+  }, file.includes('clouds-responsiveness-baseline'));
   await page.goto(pathToFileURL(path.resolve(file)).href);
   await page.waitForFunction(
     () => document.querySelector('#cloud-preview').dataset.ready === 'true',

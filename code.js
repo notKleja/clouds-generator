@@ -20,6 +20,9 @@
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 
+  // src/features.ts
+  var CLOUD_FIELD_ENABLED = false;
+
   // src/cloud.ts
   var DEFAULTS = {
     shape: Array.from({ length: 5 }, () => ({ x: 0, y: 0 })),
@@ -38,10 +41,10 @@
     quality: 2,
     background: "transparent",
     sky: "#8CB8DA",
-    gradientEnabled: false,
+    gradientEnabled: true,
     gradientColor: "#8FABC5",
     gradientStrength: 50,
-    shadowMode: "shade",
+    shadowMode: "transparency",
     selfShadows: false,
     shadowStrength: 40,
     lightAngle: 135
@@ -143,10 +146,10 @@
         const point = Array.isArray(s.shape) ? s.shape[i] : void 0;
         return { x: bounded(point == null ? void 0 : point.x, 0, -0.5, 0.5), y: bounded(point == null ? void 0 : point.y, 0, -0.5, 0.5) };
       }),
-      gradientEnabled: s.gradientEnabled === true,
+      gradientEnabled: typeof s.gradientEnabled === "boolean" ? s.gradientEnabled : d.gradientEnabled,
       gradientColor: color(s.gradientColor, d.gradientColor),
       gradientStrength: bounded(s.gradientStrength, d.gradientStrength, 0, 100),
-      shadowMode: s.shadowMode === "transparency" ? "transparency" : "shade",
+      shadowMode: s.shadowMode === "shade" || s.shadowMode === "transparency" ? s.shadowMode : d.shadowMode,
       selfShadows: s.selfShadows === true,
       shadowStrength: bounded(s.shadowStrength, d.shadowStrength, 0, 100),
       lightAngle: bounded(s.lightAngle, d.lightAngle, 0, 360),
@@ -197,7 +200,8 @@
       }
       if (data.version !== 1 && data.version !== RECIPE_VERSION || !data.settings || typeof data.settings !== "object" || Array.isArray(data.settings))
         throw new Error();
-      return { settings: cloudRecipe(data.settings) };
+      const settings = data.settings;
+      return { settings: cloudRecipe(__spreadValues({ gradientEnabled: false, shadowMode: "shade" }, settings)) };
     } catch (e) {
       return { settings: null, reason: "This layer has an invalid or unsupported cloud recipe." };
     }
@@ -263,7 +267,24 @@
   var PRESETS_KEY = "clouds-custom-presets-v1";
   var PREFERENCES_KEY = "clouds-preferences-v1";
   var headless = figma.command === "random";
-  figma.showUI(__html__, { width: 360, height: 740, themeColors: true, visible: !headless });
+  var bridgeSession = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  var uiHTML = __html__.replace(
+    "<!-- CLOUDS_SESSION -->",
+    () => `<meta name="clouds-session" content="${bridgeSession}">`
+  );
+  figma.showUI(uiHTML, { width: 360, height: 740, themeColors: true, visible: !headless });
+  function sendUI(message) {
+    figma.ui.postMessage(__spreadProps(__spreadValues({}, message), { bridgeSession }));
+  }
+  var outcomes = /* @__PURE__ */ new Map();
+  function sendOutcome(message, requestId) {
+    const result = __spreadProps(__spreadValues({}, message), { requestId });
+    if (typeof requestId === "string" && requestId.length <= 200) {
+      outcomes.set(requestId, result);
+      while (outcomes.size > 16) outcomes.delete(outcomes.keys().next().value);
+    }
+    sendUI(result);
+  }
   function isLocked(node) {
     let current = node;
     while (current) {
@@ -317,7 +338,7 @@
     return { selections, selection, selectionReason };
   }
   function sendSelection() {
-    figma.ui.postMessage(__spreadValues({ type: "selection" }, selectionMessage()));
+    sendUI(__spreadValues({ type: "selection" }, selectionMessage()));
   }
   figma.on("selectionchange", sendSelection);
   function selectedBounds() {
@@ -372,11 +393,13 @@
   }
   function reportError(error, type = "error", requestId) {
     if (headless) figma.ui.show();
-    figma.ui.postMessage({
-      type,
-      requestId,
-      message: error instanceof Error ? error.message : "Could not create this cloud. Try again."
-    });
+    sendOutcome(
+      {
+        type,
+        message: error instanceof Error ? error.message : "Could not create this cloud. Try again."
+      },
+      requestId
+    );
   }
   var saveQueue = Promise.resolve();
   function saveLast(settings) {
@@ -415,7 +438,7 @@
     return loadedPreferences;
   }
   function sendPresets(requestId) {
-    figma.ui.postMessage({
+    sendUI({
       type: "presets",
       presets,
       seedLocked,
@@ -429,6 +452,24 @@
     var _a;
     if (!raw || typeof raw !== "object") return;
     const msg = raw;
+    if (msg.type === "operation-status") {
+      const outcome = typeof msg.requestId === "string" ? outcomes.get(msg.requestId) : void 0;
+      if (outcome)
+        sendUI(
+          outcome.type === "done" ? __spreadProps(__spreadValues(__spreadValues({}, outcome), selectionMessage()), { recovered: true }) : outcome
+        );
+      else
+        sendUI({
+          type: "operation-status",
+          requestId: msg.requestId,
+          state: busy ? "applying" : "unknown"
+        });
+      return;
+    }
+    if (!CLOUD_FIELD_ENABLED && (msg.type === "prepare-scatter" || msg.type === "insert-many")) {
+      reportError(new Error("Cloud field is disabled."), "error", msg.requestId);
+      return;
+    }
     if (msg.type === "headless-error" && headless) {
       reportError(
         new Error(
@@ -444,7 +485,7 @@
     if (msg.type === "ready") {
       sendSelection();
       if (headless)
-        figma.ui.postMessage({
+        sendUI({
           type: "headless-insert",
           settings: cloudRecipe(__spreadProps(__spreadValues({}, DEFAULTS), { seed: Math.floor(Math.random() * 1e6) }))
         });
@@ -454,7 +495,7 @@
         saved = await figma.clientStorage.getAsync(STORAGE_KEY);
       } catch (e) {
       }
-      figma.ui.postMessage(__spreadValues({
+      sendUI(__spreadValues({
         type: "init",
         settings: saved ? normalize(saved) : null
       }, selectionMessage()));
@@ -508,7 +549,7 @@
         const jobs = scatterJobs(settings, Number(msg.count), bounds);
         validateBatchBudget(jobs);
         scatterPlan = { id: `scatter-${++sequence}`, signature: selectionSignature(), jobs };
-        figma.ui.postMessage({
+        sendUI({
           type: "scatter-plan",
           requestId: msg.requestId,
           planId: scatterPlan.id,
@@ -521,6 +562,11 @@
     }
     if (!["insert", "update", "update-many", "insert-many"].includes(String(msg.type)) || busy)
       return;
+    const previousOutcome = typeof msg.requestId === "string" ? outcomes.get(msg.requestId) : void 0;
+    if (previousOutcome) {
+      sendUI(previousOutcome);
+      return;
+    }
     busy = true;
     const created = [];
     const previousSelection = [...figma.currentPage.selection];
@@ -591,10 +637,13 @@
       if (created.length) figma.viewport.scrollAndZoomIntoView(targets);
       figma.commitUndo();
       if (msg.type === "insert-many") scatterPlan = null;
-      figma.ui.postMessage(__spreadValues({ type: "done", action: msg.type }, selectionMessage()));
-      figma.notify(
-        updating ? `${items.length > 1 ? `${items.length} clouds` : "Cloud"} updated` : `${items.length > 1 ? `${items.length} clouds` : "Cloud"} inserted`
-      );
+      sendOutcome(__spreadValues({ type: "done", action: msg.type }, selectionMessage()), msg.requestId);
+      try {
+        figma.notify(
+          updating ? `${items.length > 1 ? `${items.length} clouds` : "Cloud"} updated` : `${items.length > 1 ? `${items.length} clouds` : "Cloud"} inserted`
+        );
+      } catch (e) {
+      }
       saveLast(items[0].settings);
       if (headless) figma.closePlugin();
     } catch (error) {
@@ -624,7 +673,9 @@
       reportError(
         rollbackFailed ? new Error(
           "The operation failed and Figma could not restore every layer. Use Undo to recover the previous state."
-        ) : error
+        ) : error,
+        "error",
+        msg.requestId
       );
     } finally {
       busy = false;

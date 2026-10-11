@@ -30,6 +30,8 @@ try {
         height: 420,
         quality: 2,
         color: '#FFFFFF',
+        gradientEnabled: false,
+        shadowMode: 'shade',
         selfShadows: true,
         shadowStrength: 100,
       },
@@ -147,7 +149,7 @@ try {
     result: 'PASS',
     metrics,
     checks: [
-      'dark shading remains default',
+      'explicit dark shading remains supported',
       'preview switches from RGB shading to alpha masking',
       'high-resolution worker PNG removes opacity without darkening RGB',
       'undo/redo and reopened recipes retain mode',

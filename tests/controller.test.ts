@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { build } from 'esbuild';
 import { DEFAULTS } from '../src/cloud';
 
-async function harness(command = 'open') {
+async function harness(command = 'open', enableCloudField = false) {
   const messages: Record<string, unknown>[] = [];
   const nodes: Record<string, unknown>[] = [];
   const storage: Record<string, unknown> = {};
@@ -92,6 +92,19 @@ async function harness(command = 'open') {
     bundle: true,
     write: false,
     target: 'es2017',
+    plugins: enableCloudField
+      ? [
+          {
+            name: 'dormant-cloud-field',
+            setup(build) {
+              build.onLoad({ filter: /[\\/]src[\\/]features\.ts$/ }, () => ({
+                contents: 'export const CLOUD_FIELD_ENABLED = true;',
+                loader: 'ts',
+              }));
+            },
+          },
+        ]
+      : [],
   });
   vm.runInNewContext(result.outputFiles[0].text, { figma, __html__: '', Uint8Array, console });
   const send = (message: unknown) => (figma.ui.onmessage as (m: unknown) => Promise<void>)(message);
@@ -296,7 +309,7 @@ test('bulk update validates every target before mutation and rolls back failed c
 });
 
 test('scatter plans are bounded, deterministic and reject stale selections', async () => {
-  const h = await harness();
+  const h = await harness('open', true);
   await h.send({ type: 'prepare-scatter', requestId: 'a', count: 4, settings: DEFAULTS });
   const first = h.messages.at(-1) as {
     type: string;
@@ -349,7 +362,7 @@ test('random menu runs hidden headless insertion and closes on success', async (
 });
 
 test('scatter inserts planned images once and rolls back all created nodes on failure', async () => {
-  const h = await harness();
+  const h = await harness('open', true);
   await h.send({ type: 'prepare-scatter', requestId: 'ok', count: 3, settings: DEFAULTS });
   const plan = h.messages.at(-1)!;
   const items = (plan.jobs as { settings: typeof DEFAULTS; x: number; y: number }[]).map((job) => {
@@ -417,4 +430,24 @@ test('headless renderer failures reveal the generator UI', async () => {
   assert.equal(h.shown.at(-1)?.visible, true);
   assert.equal(h.messages.at(-1)?.message, 'Rendering was canceled');
   assert.equal(h.closed(), false);
+});
+
+test('completed insertion can be recovered and repeated delivery cannot duplicate it', async () => {
+  const h = await harness();
+  await h.send({ type: 'insert', requestId: 'insert-1', settings: DEFAULTS, bytes: h.png });
+  assert.equal(h.nodes.length, 1);
+  await h.send({ type: 'operation-status', requestId: 'insert-1' });
+  assert.equal(h.messages.at(-1)?.type, 'done');
+  assert.equal(h.messages.at(-1)?.requestId, 'insert-1');
+  await h.send({ type: 'insert', requestId: 'insert-1', settings: DEFAULTS, bytes: h.png });
+  assert.equal(h.nodes.length, 1);
+});
+test('Cloud field is disabled at the controller boundary', async () => {
+  const h = await harness();
+  await h.send({ type: 'prepare-scatter', requestId: 'disabled', count: 3, settings: DEFAULTS });
+  assert.equal(h.messages.at(-1)?.type, 'error');
+  assert.match(String(h.messages.at(-1)?.message), /disabled/i);
+  await h.send({ type: 'insert-many', planId: 'old-plan', items: [] });
+  assert.equal(h.nodes.length, 0);
+  assert.match(String(h.messages.at(-1)?.message), /disabled/i);
 });

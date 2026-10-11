@@ -45,10 +45,10 @@ export const DEFAULTS: Settings = {
   quality: 2,
   background: 'transparent',
   sky: '#8CB8DA',
-  gradientEnabled: false,
+  gradientEnabled: true,
   gradientColor: '#8FABC5',
   gradientStrength: 50,
-  shadowMode: 'shade',
+  shadowMode: 'transparency',
   selfShadows: false,
   shadowStrength: 40,
   lightAngle: 135,
@@ -158,10 +158,11 @@ export function normalize(input: unknown): Settings {
       const point = Array.isArray(s.shape) ? s.shape[i] : undefined;
       return { x: bounded(point?.x, 0, -0.5, 0.5), y: bounded(point?.y, 0, -0.5, 0.5) };
     }),
-    gradientEnabled: s.gradientEnabled === true,
+    gradientEnabled: typeof s.gradientEnabled === 'boolean' ? s.gradientEnabled : d.gradientEnabled,
     gradientColor: color(s.gradientColor, d.gradientColor),
     gradientStrength: bounded(s.gradientStrength, d.gradientStrength, 0, 100),
-    shadowMode: s.shadowMode === 'transparency' ? 'transparency' : 'shade',
+    shadowMode:
+      s.shadowMode === 'shade' || s.shadowMode === 'transparency' ? s.shadowMode : d.shadowMode,
     selfShadows: s.selfShadows === true,
     shadowStrength: bounded(s.shadowStrength, d.shadowStrength, 0, 100),
     lightAngle: bounded(s.lightAngle, d.lightAngle, 0, 360),

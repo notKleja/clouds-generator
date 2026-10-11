@@ -54,3 +54,12 @@ test('batch budget rejects excessive count, aggregate pixels, and encoded bytes'
     /128 MB/,
   );
 });
+
+test('new defaults do not recolor existing recipes that predate lighting modes', () => {
+  const legacy = readRecipe(JSON.stringify({ version: 2, settings: { seed: 992 } })).settings!;
+  assert.equal(legacy.gradientEnabled, false);
+  assert.equal(legacy.shadowMode, 'shade');
+  const fresh = readRecipe(writeRecipe(DEFAULTS)).settings!;
+  assert.equal(fresh.gradientEnabled, true);
+  assert.equal(fresh.shadowMode, 'transparency');
+});

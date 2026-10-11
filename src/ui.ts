@@ -1,3 +1,4 @@
+import { CLOUD_FIELD_ENABLED } from './features';
 import '@rogieking/figui3/src/fig.js';
 import '@rogieking/figui3/src/fig-editor.js';
 import { CloudLibrary } from './library-ui';
@@ -30,6 +31,9 @@ type RenderRun = {
   started: number;
   timer: ReturnType<typeof setInterval>;
   sent: boolean;
+  requestId: string;
+  sentAt: number;
+  lastCheck: number;
 };
 const get = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 let settings = cloudRecipe(DEFAULTS);
@@ -49,6 +53,9 @@ let lastPreviewKey = '';
 const history = new RecipeHistory(settings);
 let ratioLocked = false;
 let lockedRatio = settings.width / settings.height;
+const bridgeSession = document.querySelector<HTMLMetaElement>(
+  'meta[name="clouds-session"]',
+)?.content;
 const post = (message: unknown) => parent.postMessage({ pluginMessage: message }, '*');
 function status(text: string, error = false) {
   get('status').textContent = text;
@@ -243,7 +250,8 @@ function syncAvailability() {
   get('update').textContent =
     selectedClouds.length > 1 ? `Update ${selectedClouds.length} clouds` : 'Update selected';
   get('update').toggleAttribute('disabled', busy || !valid || !selected || locked);
-  get('scatter').toggleAttribute('disabled', busy || !valid);
+  get('cloud-field').hidden = !CLOUD_FIELD_ENABLED;
+  get('scatter').toggleAttribute('disabled', !CLOUD_FIELD_ENABLED || busy || !valid);
   get('update').title = !valid
     ? 'Reduce the cloud size or resolution first'
     : locked
@@ -459,11 +467,23 @@ function beginRun(label: string): RenderRun {
     started: performance.now(),
     timer: 0,
     sent: false,
+    requestId: `render-${Date.now()}-${runSequence}`,
+    sentAt: 0,
+    lastCheck: 0,
   };
   run.timer = setInterval(() => {
-    if (activeRun === run)
-      get('render-elapsed').textContent =
-        `${((performance.now() - run.started) / 1000).toFixed(1)}s`;
+    if (activeRun !== run) return;
+    const now = performance.now();
+    get('render-elapsed').textContent = `${((now - run.started) / 1000).toFixed(1)}s`;
+    if (!run.sent) return;
+    if (now - run.sentAt > 15000) {
+      finishError('Figma has not confirmed completion. Check the canvas before inserting again.');
+      return;
+    }
+    if (now - run.lastCheck > 1500) {
+      run.lastCheck = now;
+      post({ type: 'operation-status', requestId: run.requestId });
+    }
   }, 100);
   activeRun = run;
   get('render-elapsed').textContent = '0.0s';
@@ -484,6 +504,7 @@ async function beforeSend(run: RenderRun) {
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
   currentRun(run);
   run.sent = true;
+  run.sentAt = run.lastCheck = performance.now();
   get('cancel-render').setAttribute('disabled', '');
 }
 get('cancel-render').onclick = () => {
@@ -571,9 +592,10 @@ async function generate(type: 'insert' | 'update') {
       });
     }
     await beforeSend(run);
-    if (type === 'update' && items.length > 1) post({ type: 'update-many', items });
-    else post({ type, ...items[0] });
     status(type === 'insert' ? 'Inserting into Figma…' : 'Updating selected clouds…');
+    if (type === 'update' && items.length > 1)
+      post({ type: 'update-many', requestId: run.requestId, items });
+    else post({ type, requestId: run.requestId, ...items[0] });
   } catch (error) {
     failRun(run, error);
   }
@@ -585,7 +607,7 @@ get('update').onclick = () => {
   void generate('update');
 };
 get('scatter').onclick = () => {
-  if (busy) return;
+  if (!CLOUD_FIELD_ENABLED || busy) return;
   shapeEditor.finish();
   touched = true;
   const count = Math.max(
@@ -598,6 +620,7 @@ get('scatter').onclick = () => {
   post({ type: 'prepare-scatter', requestId, count, settings: cloudRecipe(settings) });
 };
 async function renderScatter(message: { requestId: string; planId: string; jobs: ScatterJob[] }) {
+  if (!CLOUD_FIELD_ENABLED) return;
   const pending = pendingScatter;
   if (!pending || pending.requestId !== message.requestId || !activeRun) return;
   pendingScatter = undefined;
@@ -623,8 +646,8 @@ async function renderScatter(message: { requestId: string; planId: string; jobs:
       items.push({ ...job, bytes });
     }
     await beforeSend(run);
-    post({ type: 'insert-many', planId: message.planId, items });
     status('Inserting cloud field…');
+    post({ type: 'insert-many', requestId: run.requestId, planId: message.planId, items });
   } catch (error) {
     failRun(run, error);
   }
@@ -702,11 +725,28 @@ function finishError(message: string) {
   status(message, true);
 }
 window.onmessage = (event) => {
-  // Host-delivered MessageEvents can have no WindowProxy source. Accept those
-  // and local bridge relays, while rejecting messages from unrelated windows.
-  if (event.source && event.source !== parent && event.source !== window) return;
   const msg = event.data?.pluginMessage;
   if (!msg || typeof msg !== 'object') return;
+  // Match the controller's per-launch token rather than assuming which host
+  // window relayed a message. Standalone browser previews have no injected token.
+  if (
+    bridgeSession
+      ? msg.bridgeSession !== bridgeSession
+      : event.source && event.source !== parent && event.source !== window
+  )
+    return;
+  if (msg.type === 'operation-status') {
+    if (msg.requestId === activeRun?.requestId && msg.state === 'unknown')
+      finishError('Figma did not receive this operation. No automatic retry was made.');
+    return;
+  }
+  if (
+    (msg.type === 'done' || msg.type === 'error') &&
+    msg.requestId &&
+    msg.requestId !== activeRun?.requestId &&
+    msg.requestId !== pendingScatter?.requestId
+  )
+    return;
   if (msg.type === 'presets') {
     library.receive(msg);
     return;
@@ -748,7 +788,11 @@ window.onmessage = (event) => {
     deferredSelection = undefined;
     endRun();
     controlsDisabled(false);
-    applySelectionState(msg, msg.action === 'insert-many');
+    if (msg.recovered) {
+      selected = null;
+      selectedClouds = [];
+    }
+    applySelectionState(msg, msg.recovered === true || msg.action === 'insert-many');
     status(
       msg.action === 'update-many'
         ? `${selectedClouds.length} clouds updated.`
@@ -759,7 +803,6 @@ window.onmessage = (event) => {
             : 'Cloud inserted. Select it anytime to edit its settings.',
     );
   } else if (msg.type === 'error') {
-    if (msg.requestId && msg.requestId !== pendingScatter?.requestId) return;
     finishError(String(msg.message));
   }
 };

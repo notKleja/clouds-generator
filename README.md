@@ -19,8 +19,8 @@ Close and rerun an already-open plugin after updating its build. The existing pl
 - **Keep seed when switching presets** retains the current seed while comparing styles. The preference persists between sessions. **Shuffle** and **Variations** intentionally choose new seeds.
 - **Edit shape**, or the curve icon in the preview, reveals five handles. Drag to push or pull nearby billows. Arrow keys nudge a focused handle; Shift moves farther; Esc cancels a drag. Each drag is one Undo step. **Reset shape** clears only handle edits.
 - Shape handles fade while hovering over sliders, inputs, or the existing color picker. Active handle drags and keyboard editing remain visible.
-- **Self shadows** adds directional interior shading. Amount and Light direction control it; 90° lights from above and 180° from the left. **Shadow style** switches between the default **Dark shading** and **Transparency mask**, which fades shadowed regions into transparency while preserving their color. Shadows are off by default.
-- **Vertical color gradient** blends the cloud's main color toward a base tint. The gradient can be combined with either shadow style. Dark shading preserves the alpha silhouette; transparency masking reduces opacity in shaded areas.
+- **Self shadows** adds directional interior shading. Amount and Light direction control it; 90° lights from above and 180° from the left. **Shadow style** switches between **Dark shading** and the default **Transparency mask**, which fades shadowed regions into transparency while preserving their color. Shadows are off by default.
+- **Vertical color gradient**, enabled for new clouds by default, blends the cloud's main color toward a base tint. The gradient can be combined with either shadow style. Dark shading preserves the alpha silhouette; transparency masking reduces opacity in shaded areas.
 - **Undo/Redo** tracks edits locally, grouping slider and shape drags into one step. Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z work outside text inputs. Selecting another cloud or inserting a new cloud starts a new history.
 
 The full-size preview stays pinned while the controls scroll. A bottom divider and soft shadow fade in when content passes beneath it. Preview background color and checkerboard affect only this surface, never exported images or layer history.
@@ -31,15 +31,17 @@ The full-size preview stays pinned while the controls scroll. A bottom divider a
 
 **Variations** generates six seed previews from the current recipe on demand. Select a thumbnail to adopt that seed. Other appearance settings are retained.
 
-## Insert, update, and scatter
+## Insert and update
 
 - **Insert cloud** places the cloud 48 pixels to the right of the selection's bounds, or at the viewport center when nothing is selected.
 - Select a generated cloud and choose **Update selected** to replace its image in place. Update also works without changing any controls, so old clouds can be regenerated with the current renderer.
 - Selecting several clouds changes the action to **Update N clouds**. Only edited fields are applied across the selection; each cloud retains its own seed, shape, size, and other untouched settings. An unchanged batch regenerates each original recipe. Up to 24 clouds and 32 million exported pixels are allowed per batch.
 - Image-filled rectangles, ellipses, and frames with valid recipes are editable. Selecting a group or frame discovers its cloud descendants. Duplicate references are removed, ancestor locks are respected, and unrelated layers are ignored with an explanation. Arbitrary images without a cloud recipe are not treated as generated clouds.
-- **Cloud field** scatters 1–24 clouds with varied seeds and scales within a selected frame or the combined selection bounds. With no selection, it uses a field around the viewport center. Bounds must be at least 64×64. Dense fields may overlap, but each cloud stays inside the bounds.
+  Cloud field is disabled in the shipped UI and controller. Its implementation remains in `src/scatter.ts`, guarded by `CLOUD_FIELD_ENABLED` in `src/features.ts`, for possible future use.
 
 Batch actions validate every image and target before changing document nodes. A failed batch rolls back its changes. If the selection or dimensions change during rendering, update/scatter refuses the stale operation. Selection refreshes when returning to the plugin, preserving pending edits and the original update target.
+
+Each insertion/update has a unique operation ID. If its completion message is missed, the UI asks for the recorded result without submitting the image again. A bounded confirmation timeout restores the controls with an explicit unknown-outcome message.
 
 Rendering shows its current stage and elapsed time. **Cancel** stops pending export work and prevents its insertion or update. Cancel becomes unavailable once the completed images are sent to Figma for the short document-application step.
 
@@ -49,7 +51,7 @@ Width changes the seeded billow count and spacing; height develops their upward 
 
 Quick sizes and the aspect-ratio lock simplify resizing. A separate 1×/2×/3× resolution multiplier changes PNG density without changing layer dimensions. Each export is limited to 4096 pixels per side and 16 megapixels. Aggregate batches are limited to 32 megapixels and 128 MB of encoded image data.
 
-Clouds are transparent PNG image fills, not editable vector paths. Their versioned recipes are stored on the layer. Version 1 recipes migrate to version 2 with current defaults; malformed or future versions are reported explicitly rather than guessed.
+Clouds are transparent PNG image fills, not editable vector paths. Their versioned recipes are stored on the layer. Version 1 recipes migrate to version 2; existing recipes retain their saved lighting choices, and recipes predating these controls retain dark-shading/no-gradient behavior; malformed or future versions are reported explicitly rather than guessed.
 
 ## Rendering and UI implementation
 
