@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clouds · Procedural cloud generator</title><meta name="description" content="Create soft procedural clouds, shape them, and download transparent PNGs. Generated locally in your browser."><meta name="color-scheme" content="light dark"><link rel="stylesheet" href="./assets/styles.css"></head>
+<body class="web-app"><a class="web-skip-link" href="#web-controls">Skip to cloud controls</a>
+<header class="web-header">
+  <div class="web-brand"><h1>Clouds</h1><p>Procedural cloud generator</p></div>
+  <nav class="web-links" aria-label="Project links">
+    <a href="https://github.com/notKleja/clouds-generator#readme" target="_blank" rel="noopener noreferrer">Figma plugin</a>
+    <a href="https://github.com/notKleja/clouds-generator" target="_blank" rel="noopener noreferrer">GitHub <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3H3v10h10v-3M9 3h4v4M7 9l6-6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+  </nav>
+</header><div class="web-workspace">
+<div class="preview-slot"><header class="preview-header" id="preview-header" aria-label="Cloud preview">
+    <div class="preview" id="preview"><canvas id="cloud-preview" role="img" aria-label="Live preview of your generated cloud"></canvas><div id="shape-overlay" hidden aria-label="Cloud shape controls"></div><div class="preview-top"><div class="preview-title"><span id="preset-label">Cumulus</span><span id="preview-activity" aria-live="off">Live</span></div><div class="preview-actions"><fig-button id="shape-edit-preview" variant="ghost" icon type="toggle" aria-label="Edit cloud shape" aria-pressed="false" title="Edit cloud shape"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 12C3 5 13 11 13 4" stroke="currentColor" stroke-width="1.5"/><rect x="1.5" y="10.5" width="3" height="3" rx=".5" fill="currentColor"/><rect x="11.5" y="2.5" width="3" height="3" rx=".5" fill="currentColor"/></svg></fig-button><fig-button variant="ghost" icon type="toggle" id="preview-bg" class="icon-button" aria-label="Toggle preview checkerboard" aria-pressed="false" title="Toggle preview checkerboard"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor"/><path d="M3 8h10M8 3v10" stroke="currentColor"/></svg></fig-button></div></div><div class="preview-bottom"><span id="preview-caption">Transparent background</span><span id="preview-size">1000 × 700</span></div></div>
+  </header></div>
+<div class="web-panel"><main id="web-controls" tabindex="-1" aria-label="Cloud controls">
+  <section class="preview-options" aria-label="Preview background">
+    <div class="section-heading"><h2>Preview background</h2><span class="muted">Preview only</span></div>
+    <div class="background-row"><fig-switch id="transparent">Transparent preview</fig-switch><fig-input-color id="sky" value="#8CB8DA" text alpha="false" picker-mode="solid" picker-dialog-position="center" aria-label="Preview background color"></fig-input-color></div>
+  </section>
+  <section class="preset-section">
+    <div class="section-heading"><h2>Cloud type</h2><fig-button id="reset" variant="ghost" size="compact">Reset</fig-button></div>
+    <div id="presets" class="presets" aria-label="Cloud presets"></div>
+    <div class="seed-lock-row"><fig-switch id="seed-lock">Keep seed when switching presets</fig-switch></div>
+    <details id="saved-library"><summary>Saved presets <span class="muted" id="saved-count">0</span></summary>
+      <div class="preset-save-row"><input id="preset-name" type="text" maxlength="48" placeholder="Preset name" aria-label="Preset name"><fig-button id="save-preset" variant="secondary">Save preset</fig-button></div>
+      <p id="saved-empty" class="hint">Save the current cloud, including shape and lighting.</p>
+      <div id="saved-presets" class="presets saved-grid"></div>
+    </details>
+    <details id="variation-library"><summary>Variations <span class="muted">Explore seeds</span></summary>
+      <fig-button id="generate-variations" variant="secondary">Generate 6 variations</fig-button>
+      <div id="variations" class="variation-grid"></div><p id="variation-status" class="hint" aria-live="polite"></p>
+    </details>
+  </section>
+  <section aria-label="Cloud appearance">
+    <div class="section-heading"><h2>Appearance</h2><div class="history-actions"><fig-button id="undo" variant="ghost" icon aria-label="Undo change" title="Undo change (⌘Z / Ctrl+Z)" disabled><svg aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M9 14 4 9l5-5" />
+  <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+</svg>
+</fig-button><fig-button id="redo" variant="ghost" icon aria-label="Redo change" title="Redo change (⌘⇧Z / Ctrl+Shift+Z)" disabled><svg aria-hidden="true" focusable="false"
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m15 14 5-5-5-5" />
+  <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13" />
+</svg>
+</fig-button></div></div>
+    <p class="selection-hint muted" id="recipe-label">Procedural cloud</p>
+    <div class="shape-tools"><fig-button id="shape-edit" variant="secondary" type="toggle" aria-pressed="false">Edit shape</fig-button><fig-button id="shape-reset" variant="ghost" disabled>Reset shape</fig-button></div><p id="shape-help" class="hint" hidden>Drag the five points in the preview. Arrow keys nudge; Shift moves farther. Esc cancels a drag.</p>
+    <div id="appearance-controls"></div>
+    <fig-field direction="horizontal"><label>Color</label><div class="color-controls"><fig-input-color id="color" picker-mode="solid" picker-dialog-position="center" value="#FFFFFF" text alpha="false" aria-label="Cloud color"></fig-input-color><fig-input-number id="opacity" value="100" min="0" max="100" units="%" aria-label="Cloud opacity"></fig-input-number></div></fig-field>
+    <fig-field direction="horizontal"><label>Seed</label><div class="seed-row"><fig-input-number id="seed" value="992" min="0" max="999999" aria-label="Seed"></fig-input-number><fig-button id="randomize" variant="secondary" size="compact">Shuffle</fig-button></div></fig-field>
+    <div class="shadow-toggle"><fig-switch id="self-shadows">Self shadows</fig-switch><span class="muted">Optional</span></div>
+    <div id="shadow-options" hidden><fig-field direction="horizontal" class="shadow-style"><label>Shadow style</label><fig-dropdown id="shadowMode" value="transparency" label="Shadow style"><option value="shade">Dark shading</option><option value="transparency">Transparency mask</option></fig-dropdown></fig-field><div id="shadow-controls"></div><p id="shadow-hint" class="hint">Soft internal shading. 90° lights from above; 180° from the left.</p></div>
+    <div class="shadow-toggle"><fig-switch id="gradient-enabled">Vertical color gradient</fig-switch></div>
+    <div id="gradient-options" hidden><fig-field direction="horizontal"><label>Base tint</label><fig-input-color id="gradientColor" value="#8FABC5" text alpha="false" picker-mode="solid" picker-dialog-position="center" aria-label="Cloud base tint"></fig-input-color></fig-field><div id="gradient-controls"></div></div>
+    <details id="texture"><summary>Texture <span class="muted">Fine-tune the noise</span></summary><div id="texture-controls"></div></details>
+  </section>
+  <section aria-label="Output settings">
+    <div class="section-heading"><h2>Cloud size</h2><fig-dropdown id="size-preset" value="custom" label="Quick size" variant="ghost"><option value="custom">Custom size</option><option value="square">Square · 512</option><option value="wide">Wide · 1000 × 400</option><option value="portrait">Portrait · 600 × 900</option></fig-dropdown></div>
+    <div class="dimensions"><fig-field><label>Width</label><fig-input-number id="width" value="1000" min="64" max="4096" aria-label="Width"></fig-input-number></fig-field><fig-button id="ratio-lock" variant="secondary" type="toggle" icon aria-label="Lock aspect ratio" aria-pressed="false" title="Lock aspect ratio"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="m6.3 5.4 1.2-1.2a3 3 0 0 1 4.3 4.3l-1.2 1.2m-4.3.9-1.2 1.2a3 3 0 0 1-4.3-4.3L2 6.3M5.5 8.5l3-3" transform="translate(1 0)" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></fig-button><fig-field><label>Height</label><fig-input-number id="height" value="700" min="64" max="4096" aria-label="Height"></fig-input-number></fig-field></div>
+    <fig-field direction="horizontal" class="resolution-row"><label>Resolution</label><fig-dropdown id="quality" value="2" label="Resolution multiplier"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option></fig-dropdown><span class="muted">Export only</span></fig-field>
+    <p class="hint">Clouds always export with a transparent background.</p>
+    <p class="hint" id="export-info">2000 × 1400 px · Transparent PNG</p>
+  </section>
+  <section id="cloud-field" aria-label="Cloud field" hidden><div class="section-heading"><h2>Cloud field</h2><span class="muted">Scatter clouds</span></div>
+    <div class="scatter-row"><fig-field direction="horizontal"><label>Count</label><fig-input-number id="scatter-count" value="8" min="1" max="24" aria-label="Cloud field count"></fig-input-number></fig-field><fig-button id="scatter" variant="secondary">Insert cloud field</fig-button></div>
+    <p class="hint">Vary seeds and sizes across the selected frame or selection bounds. With nothing selected, create a field around the viewport center.</p>
+  </section>
+</main>
+<fig-footer id="plugin-footer"><div id="status" role="status" aria-live="polite">Ready to create a little atmosphere.</div><div id="render-progress" hidden><span class="render-spinner" aria-hidden="true"></span><span id="render-elapsed" role="status" aria-live="off">0.0s</span><fig-button id="cancel-render" variant="secondary">Cancel</fig-button></div><div class="actions"><fig-button id="update" variant="secondary" disabled title="Select a cloud made with this plugin">Update selected</fig-button><fig-button id="insert" variant="primary">Insert cloud ↗</fig-button></div><p class="web-local-note">Made on your device. No uploads. <a href="./THIRD_PARTY_NOTICES.md">Credits</a></p></fig-footer></div></div>
+<script src="./assets/app.js" defer></script><noscript><p class="web-noscript">Enable JavaScript to generate and download clouds.</p></noscript>
+</body></html>
