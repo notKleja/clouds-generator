@@ -4,12 +4,14 @@ export interface Settings {
   frequency: number; displacement: number; octaves: number; puffiness: number;
   color: string; opacity: number; width: number; height: number; quality: number;
   background: 'transparent' | 'sky'; sky: string;
+  selfShadows: boolean; shadowStrength: number; lightAngle: number;
 }
 export const DEFAULTS: Settings = {
   preset: 'cumulus', seed: 992, softness: 13, spread: 12,
   frequency: 0.011, displacement: 145, octaves: 5, puffiness: 75,
   color: '#FFFFFF', opacity: 100, width: 1000, height: 700,
   quality: 2, background: 'transparent', sky: '#8CB8DA',
+  selfShadows: false, shadowStrength: 40, lightAngle: 135,
 };
 export const PRESETS: { id: string; name: string; settings: Partial<Settings> }[] = [
   { id: 'cumulus', name: 'Cumulus', settings: { seed: 992, softness: 13, spread: 12, frequency: 0.011, displacement: 145, octaves: 5, puffiness: 75 } },
@@ -31,6 +33,9 @@ export function normalize(input: unknown): Settings {
   const s = input && typeof input === 'object' ? input as Record<string, unknown> : {};
   const d = DEFAULTS;
   return {
+    selfShadows: s.selfShadows === true,
+    shadowStrength: bounded(s.shadowStrength, d.shadowStrength, 0, 100),
+    lightAngle: bounded(s.lightAngle, d.lightAngle, 0, 360),
     preset: typeof s.preset === 'string' && PRESETS.some(p => p.id === s.preset) ? s.preset : 'custom',
     seed: bounded(s.seed, d.seed, 0, 999999, true),
     softness: bounded(s.softness, d.softness, 1, 50), spread: bounded(s.spread, d.spread, 0, 60),
@@ -60,27 +65,46 @@ function random(seed: number): () => number {
   };
 }
 export interface CropBounds { x: number; y: number; width: number; height: number }
-export function createSVG(input: Settings, pixelWidth?: number, pixelHeight?: number, crop?: CropBounds): string {
+export interface CloudLayout {
+  blur: number; displacement: number; frame: CropBounds;
+  ellipses: { x: number; y: number; rx: number; ry: number }[];
+}
+/** Preserve the original seeded ridge; size edits develop it before filtering. */
+export function cloudLayout(input: Settings): CloudLayout {
   const s = normalize(input), rand = random(s.seed);
-  const round = (n: number) => n.toFixed(2);
-  const ellipses = ['<ellipse cx="500" cy="410" rx="265" ry="55"/>'];
-  for (let i = 0; i < 9; i++) {
-    const x = 270 + i * 57 + (rand() - 0.5) * 35;
-    const arch = Math.sin(i / 8 * Math.PI);
-    const h = 35 + arch * s.puffiness * (0.6 + rand() * 0.65);
-    ellipses.push(`<ellipse cx="${round(x)}" cy="${round(405 - h * 0.55)}" rx="${round(55 + rand() * 25 + s.spread * 0.45)}" ry="${round(h + s.spread * 0.4)}"/>`);
+  const widthScale = s.width / DEFAULTS.width, heightScale = s.height / DEFAULTS.height;
+  const count = Math.max(3, Math.round(9 * widthScale));
+  const ellipses: CloudLayout['ellipses'] = [
+    { x: 500, y: 410, rx: 265 * widthScale, ry: 55 * Math.sqrt(heightScale) },
+  ];
+  for (let i = 0; i < count; i++) {
+    const x = 500 + (-230 + i / (count - 1) * 456) * widthScale + (rand() - .5) * 35;
+    const arch = Math.sin(i / (count - 1) * Math.PI);
+    const h = 35 + arch * s.puffiness * (.6 + rand() * .65) * heightScale;
+    ellipses.push({ x, y: 405 - h * .55, rx: 55 + rand() * 25 + s.spread * .45, ry: h + s.spread * .4 });
   }
-  const width = Number.isFinite(pixelWidth) ? Math.max(1, Math.round(pixelWidth!)) : s.width;
-  const height = Number.isFinite(pixelHeight) ? Math.max(1, Math.round(pixelHeight!)) : s.height;
-  const skyLight = '#' + [1, 3, 5].map(i => Math.round(parseInt(s.sky.slice(i, i + 2), 16) * 0.72 + 255 * 0.28).toString(16).padStart(2, '0')).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-<defs>
-<linearGradient id="sky-gradient" x2="0" y2="1"><stop stop-color="${s.sky}"/><stop offset="1" stop-color="${skyLight}"/></linearGradient>
-<filter id="cloud" x="0" y="0" width="1000" height="700" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-<feGaussianBlur in="SourceGraphic" stdDeviation="${s.softness}" result="soft"/>
-<feTurbulence type="fractalNoise" baseFrequency="${s.frequency}" numOctaves="${s.octaves}" seed="${s.seed}" result="noise"/>
-<feDisplacementMap in="soft" in2="noise" scale="${s.displacement}" xChannelSelector="R" yChannelSelector="G"/>
+  // Keep the original filter coordinates at the default size. Expand around
+  // actual geometry at large sizes, including blur and displacement fringes.
+  const padding = Math.ceil(s.softness * 4 + s.displacement * .55 + 4);
+  const left = Math.min(0, ...ellipses.map(e => Math.floor(e.x - e.rx - padding)));
+  const top = Math.min(0, ...ellipses.map(e => Math.floor(e.y - e.ry - padding)));
+  const right = Math.max(1000, ...ellipses.map(e => Math.ceil(e.x + e.rx + padding)));
+  const bottom = Math.max(700, ...ellipses.map(e => Math.ceil(e.y + e.ry + padding)));
+  return { ellipses, blur: s.softness, displacement: s.displacement,
+    frame: { x: left, y: top, width: right - left, height: bottom - top } };
+}
+export function createSVG(input: Settings, pixelWidth?: number, pixelHeight?: number, crop?: CropBounds): string {
+  const s=normalize(input),layout=cloudLayout(s),frame=crop||layout.frame;
+  const width=Number.isFinite(pixelWidth)?Math.max(1,Math.round(pixelWidth!)):s.width;
+  const height=Number.isFinite(pixelHeight)?Math.max(1,Math.round(pixelHeight!)):s.height;
+  const ellipses=layout.ellipses.map(l=>`<ellipse cx="${l.x.toFixed(2)}" cy="${l.y.toFixed(2)}" rx="${l.rx.toFixed(2)}" ry="${l.ry.toFixed(2)}"/>`).join('');
+  const f=layout.frame,frequency=s.frequency;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${frame.x} ${frame.y} ${frame.width} ${frame.height}" preserveAspectRatio="${crop ? 'none' : 'xMidYMid meet'}">
+<defs><filter id="cloud" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feGaussianBlur in="SourceGraphic" stdDeviation="${layout.blur}" result="soft"/>
+<feTurbulence type="fractalNoise" baseFrequency="${frequency}" numOctaves="${s.octaves}" seed="${s.seed}" result="noise"/>
+<feDisplacementMap in="soft" in2="noise" scale="${layout.displacement}" xChannelSelector="R" yChannelSelector="G"/>
 </filter></defs>
-${s.background === 'sky' ? '<rect id="sky" width="100%" height="100%" fill="url(#sky-gradient)"/>' : ''}
-<svg width="100%" height="100%" viewBox="${crop ? `${crop.x} ${crop.y} ${crop.width} ${crop.height}` : '0 0 1000 700'}" preserveAspectRatio="${crop ? 'none' : 'xMidYMid meet'}"><g fill="${s.color}" opacity="${s.opacity / 100}" filter="url(#cloud)">${ellipses.join('')}</g></svg></svg>`;
+${s.background==='sky'?`<rect id="sky" x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" fill="${s.sky}"/>`:''}
+<g fill="${s.color}" opacity="${s.opacity/100}" filter="url(#cloud)">${ellipses}</g></svg>`;
 }

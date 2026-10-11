@@ -38,13 +38,15 @@ const sliders: { key: keyof Settings; label: string; min: number; max: number; s
   { key: 'displacement', label: 'Turbulence', min: 0, max: 260, step: 1, group: 'texture-controls' },
   { key: 'frequency', label: 'Frequency', min: 0.003, max: 0.04, step: 0.001, group: 'texture-controls' },
   { key: 'octaves', label: 'Detail', min: 1, max: 8, step: 1, group: 'texture-controls' },
+  { key: 'shadowStrength', label: 'Amount', min: 0, max: 100, step: 1, group: 'shadow-controls' },
+  { key: 'lightAngle', label: 'Light direction', min: 0, max: 360, step: 1, group: 'shadow-controls' },
   { key: 'spread', label: 'Spread', min: 0, max: 60, step: 1, group: 'texture-controls' },
 ];
 for (const item of sliders) {
   const row = document.createElement('fig-field'); row.setAttribute('direction', 'horizontal');
   row.innerHTML = `<label>${item.label}</label><fig-slider id="${item.key}" aria-label="${item.label}" min="${item.min}" max="${item.max}" step="${item.step}" precision="${item.key === 'frequency' ? 3 : 0}" value="${settings[item.key]}" text></fig-slider>`;
   get(item.group).appendChild(row);
-  const update = (commit: boolean) => change({ [item.key]: Number(get<HTMLInputElement>(item.key).value), preset: 'custom' }, commit);
+  const update = (commit: boolean) => change({ [item.key]: Number(get<HTMLInputElement>(item.key).value), ...(item.group === 'shadow-controls' ? {} : { preset: 'custom' }) }, commit);
   get(item.key).addEventListener('input', () => update(false));
   get(item.key).addEventListener('change', () => update(true));
 }
@@ -57,7 +59,7 @@ for (const preset of PRESETS) {
   button.append(img, label); get('presets').appendChild(button);
   button.onclick = () => change({ color: DEFAULTS.color, ...preset.settings, preset: preset.id });
 }
-function setValue(id: string, value: string | number) {
+function setValue(id: string, value: string | number | boolean) {
   const el = get(id);
   if (el.getAttribute('value') !== String(value)) el.setAttribute('value', String(value));
 }
@@ -66,6 +68,8 @@ function sync() {
     setValue(slider.key, settings[slider.key]);
   }
   for (const key of ['seed', 'width', 'height', 'quality', 'color', 'opacity'] as const) setValue(key, settings[key]);
+  get('self-shadows').toggleAttribute('checked', settings.selfShadows);
+  get('shadow-options').hidden = !settings.selfShadows;
   syncPreviewBackground();
   get('preview-size').textContent = `${settings.width} × ${settings.height}`;
   get('preset-label').textContent = PRESETS.find(p => p.id === settings.preset)?.name || 'Custom cloud';
@@ -148,6 +152,7 @@ function syncPreviewBackground() {
   get('preview-caption').textContent = previewTransparent ? 'Checkerboard · Preview only' : 'Color background · Preview only';
 }
 function changePreviewBackground(transparent: boolean) { previewTransparent = transparent; syncPreviewBackground(); }
+get('self-shadows').addEventListener('change', () => change({ selfShadows: get<HTMLInputElement>('self-shadows').checked }));
 get('transparent').addEventListener('change', () => changePreviewBackground(get<HTMLInputElement>('transparent').checked));
 const updatePreviewColor = () => {
   const value = get<HTMLInputElement>('sky').value.slice(0, 7);

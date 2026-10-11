@@ -19,6 +19,8 @@
     <div id="appearance-controls"></div>
     <fig-field direction="horizontal"><label>Color</label><div class="color-controls"><fig-input-color id="color" picker-mode="solid" picker-dialog-position="center" value="#FFFFFF" text alpha="false" aria-label="Cloud color"></fig-input-color><fig-input-number id="opacity" value="100" min="0" max="100" units="%" aria-label="Cloud opacity"></fig-input-number></div></fig-field>
     <fig-field direction="horizontal"><label>Seed</label><div class="seed-row"><fig-input-number id="seed" value="992" min="0" max="999999" aria-label="Seed"></fig-input-number><fig-button id="randomize" variant="secondary" size="compact">Shuffle</fig-button></div></fig-field>
+    <div class="shadow-toggle"><fig-switch id="self-shadows">Self shadows</fig-switch><span class="muted">Optional</span></div>
+    <div id="shadow-options" hidden><div id="shadow-controls"></div><p class="hint">Soft internal shading. 90° lights from above; 180° from the left.</p></div>
     <details id="texture"><summary>Texture <span class="muted">Fine-tune the noise</span></summary><div id="texture-controls"></div></details>
   </section>
   <section aria-label="Output settings">

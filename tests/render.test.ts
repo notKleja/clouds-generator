@@ -4,9 +4,11 @@ import assert from 'node:assert/strict';
 import { DEFAULTS, createSVG } from '../src/cloud';
 import { geometryKey, alphaBounds } from '../src/render';
 
-test('width, height, color, opacity and resolution reuse the noise geometry', () => {
+test('dimensions change geometry while paint and resolution reuse it', () => {
   const key = geometryKey(DEFAULTS);
-  assert.equal(geometryKey({ ...DEFAULTS, width: 450, height: 900, quality: 3, color: '#FF0000', opacity: 25, background: 'sky' }), key);
+  assert.equal(geometryKey({ ...DEFAULTS, quality: 3, color: '#FF0000', opacity: 25, background: 'sky' }), key);
+  assert.notEqual(geometryKey({ ...DEFAULTS, width: 1400 }), key);
+  assert.notEqual(geometryKey({ ...DEFAULTS, height: 400 }), key);
   assert.notEqual(geometryKey({ ...DEFAULTS, seed: 123 }), key);
   assert.notEqual(geometryKey({ ...DEFAULTS, softness: 40 }), key);
 });
@@ -16,7 +18,7 @@ test('alpha bounds remove empty canvas and preserve a small soft-edge guard', ()
   assert.deepEqual(alphaBounds(data, 100, 80), { x: 18, y: 28, width: 54, height: 24 });
   assert.equal(alphaBounds(new Uint8ClampedArray(16), 2, 2), null);
 });
-test('cropped output stretches the cloud to the requested dimensions', () => {
+test('cropped output fits the generated silhouette to the requested bounds', () => {
   const svg = createSVG(DEFAULTS, 800, 250, { x: 120, y: 180, width: 760, height: 330 });
   assert.match(svg, /viewBox="120 180 760 330" preserveAspectRatio="none"/);
   assert.match(svg, /width="800" height="250"/);

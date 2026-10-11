@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="350">
+<defs>
+<linearGradient id="sky-gradient" x2="0" y2="1"><stop stop-color="#8CB8DA"/><stop offset="1" stop-color="#accce4"/></linearGradient>
+<filter id="cloud" x="0" y="0" width="1000" height="700" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feGaussianBlur in="SourceGraphic" stdDeviation="13" result="soft"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="5" seed="992" result="noise"/>
+<feDisplacementMap in="soft" in2="noise" scale="145" xChannelSelector="R" yChannelSelector="G"/>
+</filter></defs>
+
+<svg width="100%" height="100%" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet"><g fill="#FFFFFF" opacity="1" filter="url(#cloud)"><ellipse cx="500" cy="410" rx="265" ry="55"/><ellipse cx="282.51" cy="385.75" rx="66.53" ry="39.80"/><ellipse cx="313.26" cy="371.66" rx="72.18" ry="65.42"/><ellipse cx="384.25" cy="360.00" rx="84.64" ry="86.62"/><ellipse cx="433.37" cy="342.82" rx="70.47" ry="117.85"/><ellipse cx="493.63" cy="347.67" rx="75.93" ry="109.04"/><ellipse cx="539.45" cy="339.23" rx="79.01" ry="124.38"/><ellipse cx="606.86" cy="367.15" rx="74.28" ry="73.61"/><ellipse cx="657.32" cy="371.27" rx="64.60" ry="66.13"/><ellipse cx="737.76" cy="385.75" rx="67.43" ry="39.80"/></g></svg></svg>

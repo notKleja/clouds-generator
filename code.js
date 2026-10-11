@@ -36,7 +36,10 @@
     height: 700,
     quality: 2,
     background: "transparent",
-    sky: "#8CB8DA"
+    sky: "#8CB8DA",
+    selfShadows: false,
+    shadowStrength: 40,
+    lightAngle: 135
   };
   var PRESETS = [
     { id: "cumulus", name: "Cumulus", settings: { seed: 992, softness: 13, spread: 12, frequency: 0.011, displacement: 145, octaves: 5, puffiness: 75 } },
@@ -58,6 +61,9 @@
     const s = input && typeof input === "object" ? input : {};
     const d = DEFAULTS;
     return {
+      selfShadows: s.selfShadows === true,
+      shadowStrength: bounded(s.shadowStrength, d.shadowStrength, 0, 100),
+      lightAngle: bounded(s.lightAngle, d.lightAngle, 0, 360),
       preset: typeof s.preset === "string" && PRESETS.some((p) => p.id === s.preset) ? s.preset : "custom",
       seed: bounded(s.seed, d.seed, 0, 999999, true),
       softness: bounded(s.softness, d.softness, 1, 50),

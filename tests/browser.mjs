@@ -12,7 +12,9 @@ const external = [];
 page.on('request', req => { if (/^https?:/.test(req.url())) external.push(req.url()); });
 await page.addInitScript(() => {
   window.messages = [];
-  window.svgRenders = 0;
+  window.svgRenders = 0;window.previewPaints=0;
+  const draw=CanvasRenderingContext2D.prototype.drawImage;
+  CanvasRenderingContext2D.prototype.drawImage=function(...args){if(this.canvas.id==='cloud-preview')window.previewPaints++;return draw.apply(this,args);};
   const originalURL = URL.createObjectURL.bind(URL);
   URL.createObjectURL = blob => { if (blob.type === 'image/svg+xml') window.svgRenders++; return originalURL(blob); };
   window.postMessage = message => { window.messages.push(message.pluginMessage); };
@@ -67,23 +69,23 @@ try {
   await page.locator('#quality select').selectOption('3');
   await page.waitForFunction(() => document.querySelector('#cloud-preview').width / document.querySelector('#cloud-preview').height > 3);
   await page.waitForTimeout(100);
-  assert.equal(await page.evaluate(() => window.svgRenders), cachedRenders, 'Sizing and density must reuse the cloud geometry');
+  assert.ok(await page.evaluate(() => window.svgRenders) > cachedRenders, 'Procedural sizing must rebuild cloud geometry');
   const resizeInteractionMs = Date.now() - editStarted;
   const sized = await exportCloud();
   assert.equal(sized.width, 2400); assert.equal(sized.height, 720);
   assert.ok(sized.bounds.left / sized.width < .05 && sized.bounds.top / sized.height < .05);
   await writeFile('artifacts/wide-cloud-3x.png', new Uint8Array(sized.bytes));
   await page.locator('#quality select').selectOption('1');
-  const beforeBurst = await page.evaluate(() => window.svgRenders);
+  const beforeBurst = await page.evaluate(() => window.previewPaints);
   await page.evaluate(() => {
     const seed = document.querySelector('#seed');
     for (let value = 2000; value < 2040; value++) {
       seed.setAttribute('value', String(value)); seed.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
-  await page.waitForFunction(count => window.svgRenders === count + 1, beforeBurst);
+  await page.waitForFunction(count => window.previewPaints === count + 1, beforeBurst);
   await page.waitForTimeout(100);
-  assert.equal(await page.evaluate(() => window.svgRenders), beforeBurst + 1, '40 rapid edits should coalesce into one noise render');
+  assert.equal(await page.evaluate(() => window.previewPaints), beforeBurst + 1, '40 rapid edits should coalesce into one preview render');
   const seed = await page.locator('#seed input').inputValue();
   await page.getByRole('button', { name: 'Shuffle' }).click();
   assert.notEqual(await page.locator('#seed input').inputValue(), seed);
@@ -146,7 +148,7 @@ try {
   await page.screenshot({ path: 'artifacts/plugin-texture.png', fullPage: true });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   assert.deepEqual(errors, []); assert.deepEqual(external, []);
-  const summary = { result: 'PASS', checks: ['tight alpha bounds for all six presets', 'width/height change cloud proportions', 'resolution-only changes reuse geometry', '40 rapid edits coalesce to one noise render', 'PNG transparency and soft alpha', '1x and 2x pixel dimensions', 'shuffle changes seed', 'late init preserves active recipe', 'overlapping selection and init race reloads correct recipe', 'preview backgrounds never affect transparent exports', 'export bounds', 'light/dark FigUI3 components', 'compact preview stays pinned while scrolling', 'no horizontal overflow', 'no runtime errors', 'zero network requests'], performance: { svgRendersForSizeAndResolutionChanges: 0, svgRendersFor40RapidEdits: 1, resizeInteractionMs, maximumPreviewPixels: 120000 }, samples: { opaquePixels: first.opaque, transparentPixels: first.transparent, partialAlphaPixels: first.partial } };
+  const summary = { result: 'PASS', checks: ['tight alpha bounds for all six presets', 'width/height change cloud proportions', 'resizing regenerates geometry; resolution remains independent', '40 rapid edits coalesce to one preview render', 'PNG transparency and soft alpha', '1x and 2x pixel dimensions', 'shuffle changes seed', 'late init preserves active recipe', 'overlapping selection and init race reloads correct recipe', 'preview backgrounds never affect transparent exports', 'export bounds', 'light/dark FigUI3 components', 'compact preview stays pinned while scrolling', 'no horizontal overflow', 'no runtime errors', 'zero network requests'], performance: { sizeChangesRegenerateGeometry: true, previewRendersFor40RapidEdits: 1, resizeInteractionMs, maximumPreviewPixels: 120000 }, samples: { opaquePixels: first.opaque, transparentPixels: first.transparent, partialAlphaPixels: first.partial } };
   await writeFile('artifacts/browser-results.json', JSON.stringify(summary, null, 2));
   console.log(JSON.stringify(summary, null, 2));
 } finally { await browser.close(); }
