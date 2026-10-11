@@ -46,6 +46,8 @@ fig-slider input[type=range] { touch-action:none; }
 #shape-edit-preview { color:#fff; background:#ffffff15; border-radius:5px; width:24px; height:24px; }
 #shape-edit-preview[selected] { background:var(--brand); }
 #shape-overlay { position:absolute; inset:0; pointer-events:none; }
+body:has(:is(fig-slider, fig-input-number, fig-input-color, .fig-fill-picker-dialog, fig-dropdown, fig-switch, input, select, textarea):hover) #shape-overlay:not(:has(.dragging, :focus-visible)) { opacity:0; }
+@media (prefers-reduced-motion: no-preference) { #shape-overlay { transition:opacity .14s ease; } }
 .shape-handle { position:absolute; width:24px; height:24px; padding:0; border:0; background:transparent; transform:translate(-50%,-50%); pointer-events:auto; touch-action:none; cursor:grab; z-index:2; }
 .shape-handle::after { content:''; display:block; margin:auto; width:9px; height:9px; border-radius:50%; border:1.5px solid var(--brand); background:#fff; box-shadow:0 0 0 1px #ffffff90; }
 .shape-handle:hover::after, .shape-handle:focus-visible::after, .shape-handle.dragging::after { width:12px; height:12px; background:var(--brand); border-color:#fff; }
