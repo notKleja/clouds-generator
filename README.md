@@ -16,6 +16,7 @@ If this starter plugin was already registered, close and rerun it to load the up
 ## Use
 
 - Pick Cumulus, Cotton, Wispy, Haze, Storm, or Stratus.
+- Click **Edit shape** (or the curve icon in the preview) to reveal five handles. Drag to push or pull nearby billows. Arrow keys nudge a focused point; Shift moves farther. A drag is one Undo step; Esc cancels the current drag. **Reset shape** clears only the handle edits. Shapes are saved on inserted clouds and restored when selected.
 - Adjust puffiness, softness, cloud color, opacity, or seed. **Shuffle** changes the seed without discarding your settings.
 - Enable **Self shadows** for soft darker interiors, with Amount and Light direction controls. It is off by default; 90° lights from above and 180° from the left.
 - Expand **Texture** for turbulence, noise frequency, detail, and spread.
@@ -39,7 +40,7 @@ Nephele's core technique is fractal noise displacing a blurred silhouette. This 
 
 Clouds are **PNG image fills**, not editable vector paths. Their versioned settings are stored on the Figma layer, so the plugin can regenerate them. Width/height regenerate the seeded silhouette before blur and turbulence: width changes billow count and spacing, while height develops the upper billows and base depth. The default 1000 × 700 recipe preserves the original plugin silhouette. The result is then tightly cropped and fitted to the requested layer dimensions, so extreme proportions still affect its appearance; this is not a physical cloud simulation. A cached alpha mask detects the visible bounds (alpha greater than 1/255) with a small edge guard, removing the old empty canvas margins. All PNG output retains transparency, including when reopening a legacy recipe that once included a sky. The resolution multiplier increases PNG pixel density without changing layer dimensions. Updating applies the dimensions shown in the plugin.
 
-Optional self shadows use a bounded 2D optical-thickness estimate with directional sampling. They tint the interior without altering the alpha silhouette. The shading field is cached separately from the geometry, and zero strength produces the same output as disabling shadows.
+Optional self shadows use a bounded 2D optical-thickness estimate with a continuous directional pass and warped gradient noise. The light pass follows neighboring density samples instead of layering spaced shadow copies. Its proportions match the output so the light direction stays consistent when resizing. Shadows tint the interior without altering the alpha silhouette. The shading field is cached separately from the geometry, and zero strength produces the same output as disabling shadows.
 
 ## Development
 
@@ -54,6 +55,7 @@ npm run test:browser
 npm run test:responsiveness
 npm run test:preview-controls
 npm run test:procedural
+npm run test:shape
 ```
 
 Browser tests use installed Google Chrome on macOS by default. Set `CHROME_PATH` to another compatible Chromium executable. They write screenshots, sample PNGs, and `artifacts/browser-results.json`. No Figma account is used by these tests.
@@ -62,11 +64,11 @@ The preview uses a bounded canvas and an eight-entry shape cache. Color, opacity
 
 Pointer capture keeps slider drags and number scrubbing active outside the control and plugin frame. Releasing, cancelling, losing focus, or hiding the page ends the gesture cleanly. Number scrubbing uses the existing FigUI3 Alt-drag behavior.
 
-Source: `src/drag.ts` (pointer continuity), `src/settings.ts` (transparent export recipe boundary), `src/interaction.ts` (preview scheduler, local history and ratio helpers), `src/render.ts` (mask cache, alpha crop, preview and export), `src/cloud.ts` (recipe/rendering), `src/shadows.ts` (optional directional interior shading), `src/ui.ts`, `src/ui.html`, `src/ui.css` (panel), and `code.ts` (Figma controller). `scripts/build.mjs` bundles everything into `code.js` and `ui.html`. Edit source files, not the generated UI.
+Source: `src/shape-editor.ts` (preview handles and gesture coordinates), `src/drag.ts` (pointer continuity), `src/settings.ts` (transparent export recipe boundary), `src/interaction.ts` (preview scheduler, local history and ratio helpers), `src/render.ts` (mask cache, alpha crop, preview and export), `src/cloud.ts` (recipe/rendering), `src/shadows.ts` (optional directional interior shading), `src/ui.ts`, `src/ui.html`, `src/ui.css` (panel), and `code.ts` (Figma controller). `scripts/build.mjs` bundles everything into `code.js` and `ui.html`. Edit source files, not the generated UI.
 
 ## Verification boundary
 
-Automated tests cover settings validation, deterministic generation, image limits, insertion/update controller behavior using a Figma mock, selection races, persistence timing, actual browser PNG rendering, UI components, light/dark layouts, and compact preview scrolling. The procedural suite compares default alpha pixels against a fixture from the published baseline, verifies resized geometry differs from a bitmap stretch, and checks that shadows preserve transparency. Live Figma import and canvas behavior are left to the user as requested.
+Automated tests cover settings validation, deterministic generation, image limits, insertion/update controller behavior using a Figma mock, selection races, persistence timing, actual browser PNG rendering, UI components, light/dark layouts, and compact preview scrolling. Shape tests cover live dragging, outside-frame pointer capture, cancellation, undo/redo, persisted edits, compact mode, and grabbing a handle while a delayed preview is pending. The procedural suite compares default alpha pixels against a fixture from the published baseline, verifies resized geometry differs from a bitmap stretch, and checks that shadows preserve transparency. Live Figma import and canvas behavior are left to the user as requested.
 
 ## References
 

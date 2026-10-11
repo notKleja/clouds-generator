@@ -1,22 +1,45 @@
-/** A cheap 2D optical-thickness estimate, not a surface-normal or sphere shader. */
-export function estimateShadows(alpha:Uint8ClampedArray,width:number,height:number,seed:number,angle:number):Float32Array {
-  const noise=(x:number,y:number)=>{
-    let h=Math.imul(x+seed,374761393)^Math.imul(y+1,668265263);h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967295;
+/** Warped gradient noise avoids the visible cells of interpolated value noise. */
+function gradientNoise(x: number, y: number, seed: number): number {
+  const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+  const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+  const dot = (a: number, b: number, dx: number, dy: number) => {
+    let hash = Math.imul(a + seed, 374761393) ^ Math.imul(b + 1, 668265263);
+    hash = Math.imul(hash ^ (hash >>> 13), 1274126177);
+    const angle = ((hash ^ (hash >>> 16)) >>> 0) / 4294967296 * Math.PI * 2;
+    return Math.cos(angle) * dx + Math.sin(angle) * dy;
   };
-  const smoothNoise=(x:number,y:number)=>{const ix=Math.floor(x),iy=Math.floor(y),a=x-ix,b=y-iy,u=a*a*(3-2*a),v=b*b*(3-2*b);return (noise(ix,iy)*(1-u)+noise(ix+1,iy)*u)*(1-v)+(noise(ix,iy+1)*(1-u)+noise(ix+1,iy+1)*u)*v;};
-  const field=new Float32Array(width*height),variation=new Float32Array(field.length),result=new Float32Array(field.length);
-  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-    const i=y*width+x,n=smoothNoise(x*.045,y*.045)*.65+smoothNoise(x*.11,y*.11)*.35;
-    variation[i]=n;field[i]=alpha[i*4+3]/255*(.35+.65*n);
+  const u = fade(fx), v = fade(fy);
+  return (dot(ix, iy, fx, fy) * (1 - u) + dot(ix + 1, iy, fx - 1, fy) * u) * (1 - v)
+    + (dot(ix, iy + 1, fx, fy - 1) * (1 - u) + dot(ix + 1, iy + 1, fx - 1, fy - 1) * u) * v;
+}
+/** Continuous directional optical thickness. Each pixel sees the preceding ray,
+ * rather than six displaced copies of the density field. O(width * height). */
+export function estimateShadows(alpha: Uint8ClampedArray, width: number, height: number, seed: number, angle: number): Float32Array {
+  const density = new Float32Array(width * height), tau = new Float32Array(density.length), result = new Float32Array(density.length);
+  const unit = Math.max(1, Math.min(width, height));
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const u = x / unit * 3.1, v = y / unit * 3.1;
+    const warp = gradientNoise(u * .6 + 13, v * .6 - 7, seed + 17);
+    const n = gradientNoise(u + warp * .9, v - warp * .7, seed) * .7
+      + gradientNoise(u * 1.67 + v * .93 + 19, v * 1.67 - u * .93 - 11, seed + 73) * .3;
+    density[y * width + x] = alpha[(y * width + x) * 4 + 3] / 255 * (.65 + n * .35);
   }
-  const sample=(x:number,y:number)=>{if(x<0||y<0||x>=width-1||y>=height-1)return 0;const ix=x|0,iy=y|0,u=x-ix,v=y-iy,i=iy*width+ix;return(field[i]*(1-u)+field[i+1]*u)*(1-v)+(field[i+width]*(1-u)+field[i+width+1]*u)*v;};
-  const a=angle*Math.PI/180,dx=Math.cos(a),dy=-Math.sin(a),unit=Math.max(1,Math.min(width,height));
-  const steps=[.06,.13,.22,.34,.5,.72];
-  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-    const i=y*width+x,coverage=alpha[i*4+3]/255;if(coverage<.01)continue;
-    let tau=0,previous=0;
-    for(const step of steps){tau+=sample(x+dx*step*unit,y+dy*step*unit)*(step-previous)*4.5;previous=step;}
-    result[i]=(1-Math.exp(-tau))*coverage*(.70+.30*variation[i]);
+  const a = angle * Math.PI / 180, dx = Math.cos(a), dy = -Math.sin(a);
+  const horizontal = Math.abs(dx) >= Math.abs(dy), dominant = horizontal ? dx : dy;
+  const cross = (horizontal ? dy : dx) / Math.max(1e-9, Math.abs(dominant));
+  const step = Math.hypot(1, cross) / unit, decay = Math.exp(-step / .8);
+  const major = horizontal ? width : height, minor = horizontal ? height : width;
+  const sign = dominant >= 0 ? 1 : -1;
+  const at = (m: number, n: number) => n < 0 || n >= minor || m < 0 || m >= major ? 0 : tau[horizontal ? n * width + m : m * width + n];
+  for (let k = 0; k < major; k++) {
+    const m = sign > 0 ? major - 1 - k : k;
+    for (let n = 0; n < minor; n++) {
+      const upstream = n + cross, low = Math.floor(upstream), f = upstream - low;
+      const previous = at(m + sign, low) * (1 - f) + at(m + sign, low + 1) * f;
+      const i = horizontal ? n * width + m : m * width + n;
+      tau[i] = previous * decay + density[i] * step;
+      result[i] = (1 - Math.exp(-tau[i] * 2.8)) * alpha[i * 4 + 3] / 255;
+    }
   }
   return result;
 }

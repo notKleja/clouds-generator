@@ -1,12 +1,15 @@
 /** Independently implemented SVG cloud technique inspired by beauhaus/Nephele. */
+export interface ShapePoint { x: number; y: number }
 export interface Settings {
   preset: string; seed: number; softness: number; spread: number;
   frequency: number; displacement: number; octaves: number; puffiness: number;
   color: string; opacity: number; width: number; height: number; quality: number;
   background: 'transparent' | 'sky'; sky: string;
+  shape: ShapePoint[];
   selfShadows: boolean; shadowStrength: number; lightAngle: number;
 }
 export const DEFAULTS: Settings = {
+  shape: Array.from({ length: 5 }, () => ({ x: 0, y: 0 })),
   preset: 'cumulus', seed: 992, softness: 13, spread: 12,
   frequency: 0.011, displacement: 145, octaves: 5, puffiness: 75,
   color: '#FFFFFF', opacity: 100, width: 1000, height: 700,
@@ -33,6 +36,10 @@ export function normalize(input: unknown): Settings {
   const s = input && typeof input === 'object' ? input as Record<string, unknown> : {};
   const d = DEFAULTS;
   return {
+    shape: Array.from({ length: 5 }, (_, i) => {
+      const point = Array.isArray(s.shape) ? s.shape[i] : undefined;
+      return { x: bounded(point?.x, 0, -.5, .5), y: bounded(point?.y, 0, -.5, .5) };
+    }),
     selfShadows: s.selfShadows === true,
     shadowStrength: bounded(s.shadowStrength, d.shadowStrength, 0, 100),
     lightAngle: bounded(s.lightAngle, d.lightAngle, 0, 360),
@@ -67,6 +74,7 @@ function random(seed: number): () => number {
 export interface CropBounds { x: number; y: number; width: number; height: number }
 export interface CloudLayout {
   blur: number; displacement: number; frame: CropBounds;
+  handles: ShapePoint[]; shapeScale: ShapePoint;
   ellipses: { x: number; y: number; rx: number; ry: number }[];
 }
 /** Preserve the original seeded ridge; size edits develop it before filtering. */
@@ -83,6 +91,25 @@ export function cloudLayout(input: Settings): CloudLayout {
     const h = 35 + arch * s.puffiness * (.6 + rand() * .65) * heightScale;
     ellipses.push({ x, y: 405 - h * .55, rx: 55 + rand() * 25 + s.spread * .45, ry: h + s.spread * .4 });
   }
+  const shapeScale = {
+    x: Math.max(...ellipses.map(e => e.x + e.rx)) - Math.min(...ellipses.map(e => e.x - e.rx)),
+    y: Math.max(...ellipses.map(e => e.y + e.ry)) - Math.min(...ellipses.map(e => e.y - e.ry)),
+  };
+  const handles = s.shape.map((offset, i) => {
+    const index = i / 4 * (count - 1), a = ellipses[1 + Math.floor(index)], b = ellipses[1 + Math.ceil(index)];
+    const t = index % 1;
+    return { x: a.x * (1 - t) + b.x * t + offset.x * shapeScale.x,
+      y: a.y * (1 - t) + b.y * t + offset.y * shapeScale.y };
+  });
+  for (let i = 0; i < ellipses.length; i++) {
+    const t = i === 0 ? .5 : (i - 1) / (count - 1);
+    const influence = i === 0 ? .35 : 1;
+    for (let j = 0; j < 5; j++) {
+      const weight = Math.exp(-Math.pow((t - j / 4) / .18, 2)) * influence;
+      ellipses[i].x += s.shape[j].x * shapeScale.x * weight;
+      ellipses[i].y += s.shape[j].y * shapeScale.y * weight;
+    }
+  }
   // Keep the original filter coordinates at the default size. Expand around
   // actual geometry at large sizes, including blur and displacement fringes.
   const padding = Math.ceil(s.softness * 4 + s.displacement * .55 + 4);
@@ -90,7 +117,7 @@ export function cloudLayout(input: Settings): CloudLayout {
   const top = Math.min(0, ...ellipses.map(e => Math.floor(e.y - e.ry - padding)));
   const right = Math.max(1000, ...ellipses.map(e => Math.ceil(e.x + e.rx + padding)));
   const bottom = Math.max(700, ...ellipses.map(e => Math.ceil(e.y + e.ry + padding)));
-  return { ellipses, blur: s.softness, displacement: s.displacement,
+  return { ellipses, handles, shapeScale, blur: s.softness, displacement: s.displacement,
     frame: { x: left, y: top, width: right - left, height: bottom - top } };
 }
 export function createSVG(input: Settings, pixelWidth?: number, pixelHeight?: number, crop?: CropBounds): string {

@@ -45,7 +45,20 @@ try{
   await page.mouse.move(850,c.y+c.height*.4,{steps:6});const outsideColor=await frame.locator('#sky').getAttribute('value');
   await page.mouse.move(c.x+c.width*.2,c.y+c.height*.7,{steps:6});const returnedColor=await frame.locator('#sky').getAttribute('value');assert.notEqual(returnedColor,outsideColor);
   await page.mouse.up();assert.equal(await frame.evaluate(()=>[...document.querySelectorAll('*')].some(el=>el.hasPointerCapture?.(1))),false);
-  result.checks=['number scrub outside iframe','slider outside track and iframe','release outside frame','blur and pointercancel cleanup', 'range keyboard behavior', 'cancelled drag commits one undo step','existing picker drag capture and return'];
+  await page.keyboard.press('Escape');
+  await frame.locator('#shape-edit-preview').click();
+  await frame.waitForFunction(()=>!document.querySelector('#preview-header').classList.contains('compact')&&document.querySelector('#preview').getBoundingClientRect().height>201);
+  const point=frame.locator('[data-point="2"]'),pointBox=await point.boundingBox();
+  const beforeShape=await frame.locator('#cloud-preview').evaluate(c=>c.toDataURL());
+  await page.mouse.move(pointBox.x+12,pointBox.y+12);await page.mouse.down();assert.equal(await point.evaluate(el=>el.hasPointerCapture(1)),true);
+  await page.mouse.move(800,pointBox.y+24,{steps:10});await page.mouse.up();
+  await frame.waitForFunction(()=>document.querySelector('#preview-activity').textContent==='Live');
+  const afterShape=await frame.locator('#cloud-preview').evaluate(c=>c.toDataURL());
+  assert.notEqual(afterShape,beforeShape);assert.equal(await point.evaluate(el=>el.hasPointerCapture(1)),false);
+  await page.mouse.move(pointBox.x+12,pointBox.y+12);assert.equal(await frame.locator('#cloud-preview').evaluate(c=>c.toDataURL()),afterShape);
+  const nextPoint=await point.boundingBox();await page.mouse.move(nextPoint.x+12,nextPoint.y+12);await page.mouse.down();
+  await frame.evaluate(()=>window.dispatchEvent(new Event('blur')));await page.mouse.up();assert.equal(await point.evaluate(el=>el.hasPointerCapture(1)),false);
+  result.checks=['shape drag and release outside iframe','shape blur cleanup','number scrub outside iframe','slider outside track and iframe','release outside frame','blur and pointercancel cleanup', 'range keyboard behavior', 'cancelled drag commits one undo step','existing picker drag capture and return'];
  }
  console.log(JSON.stringify(result,null,2));await writeFile(file.includes('/private/tmp')?'artifacts/drag-before.json':'artifacts/drag-after.json',JSON.stringify(result,null,2));
 }finally{await browser.close();}

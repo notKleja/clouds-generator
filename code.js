@@ -22,6 +22,7 @@
 
   // src/cloud.ts
   var DEFAULTS = {
+    shape: Array.from({ length: 5 }, () => ({ x: 0, y: 0 })),
     preset: "cumulus",
     seed: 992,
     softness: 13,
@@ -61,6 +62,10 @@
     const s = input && typeof input === "object" ? input : {};
     const d = DEFAULTS;
     return {
+      shape: Array.from({ length: 5 }, (_, i) => {
+        const point = Array.isArray(s.shape) ? s.shape[i] : void 0;
+        return { x: bounded(point == null ? void 0 : point.x, 0, -0.5, 0.5), y: bounded(point == null ? void 0 : point.y, 0, -0.5, 0.5) };
+      }),
       selfShadows: s.selfShadows === true,
       shadowStrength: bounded(s.shadowStrength, d.shadowStrength, 0, 100),
       lightAngle: bounded(s.lightAngle, d.lightAngle, 0, 360),

@@ -1,5 +1,6 @@
 import '@rogieking/figui3/src/fig.js';
 import '@rogieking/figui3/src/fig-editor.js';
+import { ShapeEditor } from './shape-editor';
 import { installControlCapture } from './drag';
 import { cloudRecipe } from './settings';
 import { LatestPreview, RecipeHistory, resizeLocked } from './interaction';
@@ -30,7 +31,7 @@ function controlsDisabled(value: boolean) {
   document.querySelectorAll('fig-button, fig-slider, fig-input-number, fig-input-color, fig-dropdown, fig-switch').forEach(el => el.toggleAttribute('disabled', value));
   get('update').toggleAttribute('disabled', value || !selected || selected.locked);
   get('insert').textContent = value ? 'Rendering…' : 'Insert cloud ↗';
-  syncAvailability();
+  syncAvailability(); shapeEditor.sync(settings);
 }
 const sliders: { key: keyof Settings; label: string; min: number; max: number; step: number; group: string }[] = [
   { key: 'puffiness', label: 'Puffiness', min: 0, max: 100, step: 1, group: 'appearance-controls' },
@@ -57,7 +58,7 @@ for (const preset of PRESETS) {
   img.src = `data:image/svg+xml,${encodeURIComponent(createSVG(normalize({ ...DEFAULTS, ...preset.settings }), 200, 140))}`;
   const label = document.createElement('span'); label.textContent = preset.name;
   button.append(img, label); get('presets').appendChild(button);
-  button.onclick = () => change({ color: DEFAULTS.color, ...preset.settings, preset: preset.id });
+  button.onclick = () => { shapeEditor.finish(); change({ color: DEFAULTS.color, shape: [], ...preset.settings, preset: preset.id }); };
 }
 function setValue(id: string, value: string | number | boolean) {
   const el = get(id);
@@ -65,11 +66,12 @@ function setValue(id: string, value: string | number | boolean) {
 }
 function sync() {
   for (const slider of sliders) {
-    setValue(slider.key, settings[slider.key]);
+    setValue(slider.key, settings[slider.key] as number);
   }
   for (const key of ['seed', 'width', 'height', 'quality', 'color', 'opacity'] as const) setValue(key, settings[key]);
   get('self-shadows').toggleAttribute('checked', settings.selfShadows);
   get('shadow-options').hidden = !settings.selfShadows;
+  shapeEditor.sync(settings);
   syncPreviewBackground();
   get('preview-size').textContent = `${settings.width} × ${settings.height}`;
   get('preset-label').textContent = PRESETS.find(p => p.id === settings.preset)?.name || 'Custom cloud';
@@ -102,15 +104,16 @@ function syncAvailability() {
   get('redo').toggleAttribute('disabled', busy || !history.canRedo || !history.matches(settings));
 }
 const previews = new LatestPreview<Settings>(async (recipe, current) => {
-  const key = previewKey(recipe);
+  const key = previewKey(recipe) + JSON.stringify(shapeEditor.viewport);
   if (key === lastPreviewKey) return;
-  await paintPreview(get<HTMLCanvasElement>('cloud-preview'), recipe, current);
-  if (current()) lastPreviewKey = key;
+  const crop = await paintPreview(get<HTMLCanvasElement>('cloud-preview'), recipe, current, shapeEditor.viewport);
+  if (current() && crop) { lastPreviewKey = key; shapeEditor.rendered(crop); }
 }, error => status(error instanceof Error ? error.message : 'Preview could not render.', true),
 callback => requestAnimationFrame(callback), active => {
   get('preview-activity').textContent = active ? 'Updating…' : 'Live';
   get('preview-activity').classList.toggle('updating', active);
 });
+const shapeEditor = new ShapeEditor(get<HTMLCanvasElement>('cloud-preview'), change, () => { previews.invalidate(); lastPreviewKey = ''; schedulePreview(); }, () => busy, settings);
 function schedulePreview() { previews.request({ ...settings }); }
 function change(patch: Partial<Settings>, commit = true) {
   if (busy) return;
@@ -171,12 +174,12 @@ function restoreRecipe(recipe: Settings) {
   touched = true; previews.invalidate(); settings = { ...recipe };
   lockedRatio = settings.width / settings.height; sync(); schedulePreview();
 }
-get('undo').onclick = () => { restoreRecipe(history.undo(settings)); };
-get('redo').onclick = () => { if (history.matches(settings)) restoreRecipe(history.redo()); };
+get('undo').onclick = () => { shapeEditor.finish(); restoreRecipe(history.undo(settings)); };
+get('redo').onclick = () => { shapeEditor.finish(); if (history.matches(settings)) restoreRecipe(history.redo()); };
 window.addEventListener('keydown', event => {
   if (busy || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
   if (event.composedPath().some(target => target instanceof HTMLElement && (target.matches('input,textarea,select') || target.isContentEditable))) return;
-  event.preventDefault();
+  event.preventDefault(); shapeEditor.finish();
   if (event.shiftKey) { if (history.canRedo && history.matches(settings)) restoreRecipe(history.redo()); }
   else if (history.canUndo(settings)) restoreRecipe(history.undo(settings));
 });
@@ -184,11 +187,12 @@ get('randomize').onclick = () => {
   const value = new Uint32Array(1); crypto.getRandomValues(value);
   change({ seed: (settings.seed + 1 + value[0] % 999999) % 1000000 });
 };
-get('reset').onclick = () => { previews.invalidate(); lockedRatio = DEFAULTS.width / DEFAULTS.height; change({ ...DEFAULTS }); schedulePreview(); status('Default cloud restored.'); };
+get('reset').onclick = () => { shapeEditor.finish(); previews.invalidate(); lockedRatio = DEFAULTS.width / DEFAULTS.height; change({ ...DEFAULTS }); schedulePreview(); status('Default cloud restored.'); };
 get('preview-bg').onclick = () => changePreviewBackground(!previewTransparent);
 
 async function generate(type: 'insert' | 'update') {
   if (busy) return;
+  shapeEditor.finish();
   touched = true;
   history.commit(settings);
   const recipe = cloudRecipe(settings), targetId = selected?.id;
@@ -206,6 +210,7 @@ get('insert').onclick = () => { void generate('insert'); };
 get('update').onclick = () => { void generate('update'); };
 function applySelection(value: Selected, load: boolean) {
   if (busy && load) { deferredSelection = value; return; }
+  shapeEditor.finish();
   const changed = selected?.id !== value?.id;
   selected = value;
   if (changed && value && !busy && !load) history.reset(settings);
@@ -225,7 +230,7 @@ window.onmessage = event => {
   if (!msg || typeof msg !== 'object') return;
   if (msg.type === 'init') {
     if (busy) { deferredSelection = msg.selection; return; }
-    if (!touched) { previews.invalidate(); settings = cloudRecipe(msg.selection?.settings || msg.settings || DEFAULTS); history.reset(settings); lockedRatio = settings.width / settings.height; }
+    if (!touched) { shapeEditor.finish(); previews.invalidate(); settings = cloudRecipe(msg.selection?.settings || msg.settings || DEFAULTS); history.reset(settings); lockedRatio = settings.width / settings.height; }
     selected = msg.selection;
     sync(); schedulePreview();
   } else if (msg.type === 'selection') applySelection(msg.selection, true);

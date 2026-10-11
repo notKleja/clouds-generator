@@ -6,7 +6,7 @@ import { createSVG, cloudLayout, exportSize, type Settings, type CropBounds } fr
 const SAMPLE_WIDTH = 500;
 const SAMPLE_HEIGHT = 350;
 export function geometryKey(s: Settings): string {
-  return [s.width, s.height, s.seed, s.softness, s.spread, s.frequency, s.displacement, s.octaves, s.puffiness].join(':');
+  return [s.width, s.height, s.seed, s.softness, s.spread, s.frequency, s.displacement, s.octaves, s.puffiness, ...s.shape.flatMap(p => [p.x, p.y])].join(':');
 }
 export function alphaBounds(data: Uint8ClampedArray, width: number, height: number): CropBounds | null {
   let left = width, top = height, right = -1, bottom = -1;
@@ -72,8 +72,8 @@ function shadedMask(mask:Mask,s:Settings):HTMLCanvasElement {
   const key=[s.lightAngle,s.shadowStrength,s.color].join(':');
   if(mask.shaded?.key===key)return mask.shaded.canvas;
   if(mask.shadow?.angle!==s.lightAngle){
-    const scale=Math.min(1,240/mask.canvas.width,180/mask.canvas.height);
-    const sample=document.createElement('canvas');sample.width=Math.max(1,Math.round(mask.canvas.width*scale));sample.height=Math.max(1,Math.round(mask.canvas.height*scale));
+    const scale=Math.min(240/s.width,180/s.height);
+    const sample=document.createElement('canvas');sample.width=Math.max(1,Math.round(s.width*scale));sample.height=Math.max(1,Math.round(s.height*scale));
     const ctx=context(sample);ctx.drawImage(mask.canvas,0,0,sample.width,sample.height);
     mask.shadow={angle:s.lightAngle,width:sample.width,height:sample.height,field:estimateShadows(ctx.getImageData(0,0,sample.width,sample.height).data,sample.width,sample.height,s.seed,s.lightAngle)};
   }
@@ -81,13 +81,13 @@ function shadedMask(mask:Mask,s:Settings):HTMLCanvasElement {
   context(shade).putImageData(new ImageData(new Uint8ClampedArray(shadowPixels(mask.shadow.field,s.color,s.shadowStrength)),shade.width,shade.height),0,0);
   mask.shaded={key,canvas:shade};return shade;
 }
-export async function paintPreview(canvas: HTMLCanvasElement, settings: Settings, current: () => boolean): Promise<void> {
+export async function paintPreview(canvas: HTMLCanvasElement, settings: Settings, current: () => boolean, viewport?: CropBounds): Promise<CropBounds | undefined> {
   const mask = await maskFor(settings);
   if (!current()) return;
   // Bounded backing store, independent of export resolution and document size.
   const scale = Math.min(480 / settings.width, 250 / settings.height);
-  const width = Math.max(1, Math.round(settings.width * scale));
-  const height = Math.max(1, Math.round(settings.height * scale));
+  const width = viewport ? canvas.width : Math.max(1, Math.round(settings.width * scale));
+  const height = viewport ? canvas.height : Math.max(1, Math.round(settings.height * scale));
   // Resizing the backing store reallocates and resets Canvas state. Reuse it for paint-only edits.
   if (canvas.width !== width) canvas.width = width;
   if (canvas.height !== height) canvas.height = height;
@@ -95,11 +95,14 @@ export async function paintPreview(canvas: HTMLCanvasElement, settings: Settings
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.clearRect(0, 0, width, height);
   ctx.imageSmoothingQuality = 'high';
+  const view = viewport || mask.crop;
+  const x = (mask.crop.x - view.x) / view.width * width, y = (mask.crop.y - view.y) / view.height * height;
+  const w = mask.crop.width / view.width * width, h = mask.crop.height / view.height * height;
   if(settings.selfShadows && settings.shadowStrength>0){
-    ctx.drawImage(shadedMask(mask,settings),0,0,canvas.width,canvas.height);
-    ctx.globalCompositeOperation='destination-in';ctx.drawImage(mask.canvas,0,0,canvas.width,canvas.height);
+    ctx.drawImage(shadedMask(mask,settings),x,y,w,h);
+    ctx.globalCompositeOperation='destination-in';ctx.drawImage(mask.canvas,x,y,w,h);
   }else{
-    ctx.drawImage(mask.canvas, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(mask.canvas, x, y, w, h);
     ctx.globalCompositeOperation = 'source-in';
     ctx.fillStyle = settings.color; ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
@@ -108,6 +111,7 @@ export async function paintPreview(canvas: HTMLCanvasElement, settings: Settings
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
   canvas.dataset.ready = 'true';
+  return view;
 }
 export async function rasterize(input: Settings): Promise<Uint8Array> {
   const settings = cloudRecipe(input);
