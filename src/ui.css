@@ -46,3 +46,6 @@ body:has(:is(fig-slider, fig-input-number, fig-input-color, .fig-fill-picker-dia
 .shape-tools fig-button { height:26px; }
 
 html { scroll-padding-top:227px; scroll-padding-bottom:100px; }
+.preview-header::after { content:''; position:absolute; left:0; right:0; bottom:-8px; height:9px; border-top:1px solid var(--border); background:linear-gradient(to bottom, #00000012, transparent); opacity:0; pointer-events:none; }
+.preview-header.scrolled::after { opacity:1; }
+@media (prefers-reduced-motion: no-preference) { .preview-header::after { transition:opacity .18s ease; } }

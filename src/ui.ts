@@ -243,3 +243,9 @@ window.onmessage = event => {
 };
 installControlCapture();
 sync(); schedulePreview(); post({ type: 'ready' });
+
+function syncPreviewSeparation() {
+  get('preview-header').classList.toggle('scrolled', window.scrollY > 0);
+}
+window.addEventListener('scroll', syncPreviewSeparation, { passive: true });
+syncPreviewSeparation();
