@@ -55,7 +55,12 @@ try{
  // New selection resets local history; local undo never reaches a different cloud's recipe.
  await page.evaluate(()=>window.deliver({type:'selection',selection:{id:'B',name:'Cloud B',settings:{preset:'cumulus',seed:456,softness:13,spread:12,frequency:.011,displacement:145,octaves:5,puffiness:75,color:'#FFFFFF',opacity:100,width:800,height:400,quality:2,background:'transparent',sky:'#8CB8DA'},locked:false}}));
  assert.equal(await page.getByRole('button',{name:'Undo change',exact:true}).isDisabled(),true);
- assert.equal(await page.getByRole('button',{name:'Update selected',exact:true}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:'Update selected',exact:true}).isDisabled(),false,'A recognized selected cloud can be regenerated without changing a setting');
+ await page.getByRole('button',{name:'Update selected',exact:true}).click();
+ await page.waitForFunction(()=>window.messages.some(m=>m.type==='update'));
+ const unchangedUpdate=await page.evaluate(()=>{const m=window.messages.find(m=>m.type==='update');window.deliver({type:'done',action:'update',selection:{id:'B',name:'Cloud B',settings:m.settings,locked:false}});return m;});
+ assert.equal(unchangedUpdate.targetId,'B');assert.equal(unchangedUpdate.settings.seed,456);
+ assert.equal(await page.getByRole('button',{name:'Update selected',exact:true}).isDisabled(),false,'Regenerating a cloud must not latch Update disabled');
  await page.locator('#seed input').fill('123');await page.locator('#seed input').press('Tab');
  assert.equal(await page.getByRole('button',{name:'Undo change',exact:true}).isDisabled(),false);
  await page.getByRole('button',{name:/Insert cloud/}).click();
@@ -76,6 +81,6 @@ try{
  assert.equal((await page.locator('#preview-header').boundingBox()).y,0);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);
- const report={result:'PASS',before,after,checks:['continuous drag updates','canvas backing-store reuse','one-step gesture undo/redo','ratio lock','size presets','export-resolution repaint skipped','selection and inserted copies reset history', 'repeated Reset keeps preview current','unchanged Update disabled','full-size sticky preview controls remain accessible']};
+ const report={result:'PASS',before,after,checks:['continuous drag updates','canvas backing-store reuse','one-step gesture undo/redo','ratio lock','size presets','export-resolution repaint skipped','selection and inserted copies reset history', 'repeated Reset keeps preview current','unchanged selected cloud remains updateable','full-size sticky preview controls remain accessible']};
  await writeFile('artifacts/responsiveness-results.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();}

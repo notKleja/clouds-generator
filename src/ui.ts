@@ -96,10 +96,9 @@ function previewKey(recipe: Settings) { return JSON.stringify({ ...cloudRecipe(r
 function syncAvailability() {
   let valid = true;
   try { exportSize(settings); } catch { valid = false; }
-  const modified = selected && (selected.settings.background === 'sky' || JSON.stringify({ ...cloudRecipe(settings), preset: '' }) !== JSON.stringify({ ...cloudRecipe(selected.settings), preset: '' }));
   get('insert').toggleAttribute('disabled', busy || !valid);
-  get('update').toggleAttribute('disabled', busy || !valid || !selected || selected.locked || !modified);
-  get('update').title = !valid ? 'Reduce the cloud size or resolution first' : selected?.locked ? 'Unlock this cloud to update it' : !selected ? 'Select a cloud made with this plugin' : !modified ? 'No changes to apply' : `Update ${selected.name}`;
+  get('update').toggleAttribute('disabled', busy || !valid || !selected || selected.locked);
+  get('update').title = !valid ? 'Reduce the cloud size or resolution first' : selected?.locked ? 'Unlock this cloud to update it' : !selected ? 'Select a cloud made with this plugin' : `Update ${selected.name}`;
   get('undo').toggleAttribute('disabled', busy || !history.canUndo(settings));
   get('redo').toggleAttribute('disabled', busy || !history.canRedo || !history.matches(settings));
 }

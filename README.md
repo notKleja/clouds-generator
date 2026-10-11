@@ -26,7 +26,7 @@ If this starter plugin was already registered, close and rerun it to load the up
 - Use **Preview background** to choose a solid color with the styled FigUI3 picker, or enable **Transparent preview** for a checkerboard. These controls affect only the preview; PNG exports are always transparent.
 - Click **Insert cloud**. To edit one later, select a generated cloud and reopen the plugin. **Update selected** applies the requested width and height while preserving its position. If it was resized externally while the plugin was open, reselect it first to refresh its dimensions.
 
-The preview updates while sliders move, stays pinned at its full size while scrolling. Its Live/Updating indicator shows pending preview work. The checkerboard toggle remains available in the fixed preview header. Invalid output dimensions disable Insert/Update with an inline explanation; Update is also disabled when the selected cloud has no pending changes. The checkerboard toggle and background color affect only the preview surface; they do not enter cloud history or the saved layer recipe.
+The preview updates while sliders move, stays pinned at its full size while scrolling. Its Live/Updating indicator shows pending preview work. The checkerboard toggle remains available in the fixed preview header. Invalid output dimensions disable Insert/Update with an inline explanation; Update stays available for a recognized, unlocked selected cloud, including when you want to regenerate it without changing settings. The checkerboard toggle and background color affect only the preview surface; they do not enter cloud history or the saved layer recipe.
 
 ## UI components
 
