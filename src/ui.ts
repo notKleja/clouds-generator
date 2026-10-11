@@ -243,12 +243,3 @@ window.onmessage = event => {
 };
 installControlCapture();
 sync(); schedulePreview(); post({ type: 'ready' });
-
-let scrollFrame = 0;
-function updatePreviewPosition() {
-  scrollFrame = 0;
-  const compact = window.scrollY > 48;
-  get('preview-header').classList.toggle('compact', compact);
-}
-window.addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(updatePreviewPosition); }, { passive: true });
-updatePreviewPosition();

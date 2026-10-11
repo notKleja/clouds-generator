@@ -52,10 +52,10 @@ try {
  assert.notEqual(await pixels(),initial);
  await page.locator('#self-shadows input').check();await idle();
  await page.evaluate(()=>window.scrollTo(0,0));await mkdir('artifacts/shape',{recursive:true});await page.screenshot({path:'artifacts/shape/edited.png'});
- await page.evaluate(()=>window.scrollTo(0,400));await page.waitForFunction(()=>document.querySelector('#preview-header').classList.contains('compact'));
- assert.equal(await handle.isVisible(),true);const compact=await handle.boundingBox();assert.ok(compact.y>=0&&compact.y<100);
- await page.screenshot({path:'artifacts/shape/compact.png'});
+ await page.evaluate(()=>window.scrollTo(0,400));await page.waitForFunction(()=>window.scrollY>48);
+ assert.equal(await handle.isVisible(),true);const sticky=await handle.boundingBox();assert.ok(sticky.y>=0&&sticky.y<226);assert.equal((await page.locator('#preview').boundingBox()).height,202);
+ await page.screenshot({path:'artifacts/shape/sticky.png'});
  assert.deepEqual(errors,[]);
- const report={result:'PASS',checks:['pending preview cannot change the drag coordinate system','five optional preview handles','live drag with pointer capture outside preview','one-step gesture undo/redo','Escape cancels draft','keyboard nudging','shape saved in export and recovered from selection','shape-only reset','handles remain usable in compact preview','no runtime errors']};
+ const report={result:'PASS',checks:['pending preview cannot change the drag coordinate system','five optional preview handles','live drag with pointer capture outside preview','one-step gesture undo/redo','Escape cancels draft','keyboard nudging','shape saved in export and recovered from selection','shape-only reset','handles remain usable in full-size sticky preview','no runtime errors']};
  await writeFile('artifacts/shape/results.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();}

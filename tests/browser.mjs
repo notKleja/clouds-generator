@@ -136,19 +136,19 @@ try {
   await page.screenshot({ path: 'artifacts/plugin-dark.png', fullPage: true });
   await page.locator('#texture summary').click();
   await page.evaluate(() => window.scrollTo(0, 400));
-  await page.waitForFunction(() => document.querySelector('#preview-header').classList.contains('compact'));
-  await page.waitForFunction(() => document.querySelector('#preview').getBoundingClientRect().height < 90);
+  await page.waitForFunction(() => window.scrollY > 48);
+  await page.waitForFunction(() => document.querySelector('#preview').getBoundingClientRect().height === 202);
   const sticky = await page.locator('#preview-header').boundingBox();
-  assert.equal(sticky.y, 0); assert.ok(sticky.height < 110);
+  assert.equal(sticky.y, 0); assert.equal(sticky.height, 227);
   await page.setViewportSize({ width: 360, height: 740 });
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.screenshot({ path: 'artifacts/plugin-compact.png' });
+  await page.screenshot({ path: 'artifacts/plugin-sticky.png' });
   assert.equal((await page.locator('#preview-header').boundingBox()).y, 0);
   assert.equal(Math.round((await page.locator('fig-footer').boundingBox()).y + (await page.locator('fig-footer').boundingBox()).height), 740);
   await page.screenshot({ path: 'artifacts/plugin-texture.png', fullPage: true });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   assert.deepEqual(errors, []); assert.deepEqual(external, []);
-  const summary = { result: 'PASS', checks: ['tight alpha bounds for all six presets', 'width/height change cloud proportions', 'resizing regenerates geometry; resolution remains independent', '40 rapid edits coalesce to one preview render', 'PNG transparency and soft alpha', '1x and 2x pixel dimensions', 'shuffle changes seed', 'late init preserves active recipe', 'overlapping selection and init race reloads correct recipe', 'preview backgrounds never affect transparent exports', 'export bounds', 'light/dark FigUI3 components', 'compact preview stays pinned while scrolling', 'no horizontal overflow', 'no runtime errors', 'zero network requests'], performance: { sizeChangesRegenerateGeometry: true, previewRendersFor40RapidEdits: 1, resizeInteractionMs, maximumPreviewPixels: 120000 }, samples: { opaquePixels: first.opaque, transparentPixels: first.transparent, partialAlphaPixels: first.partial } };
+  const summary = { result: 'PASS', checks: ['tight alpha bounds for all six presets', 'width/height change cloud proportions', 'resizing regenerates geometry; resolution remains independent', '40 rapid edits coalesce to one preview render', 'PNG transparency and soft alpha', '1x and 2x pixel dimensions', 'shuffle changes seed', 'late init preserves active recipe', 'overlapping selection and init race reloads correct recipe', 'preview backgrounds never affect transparent exports', 'export bounds', 'light/dark FigUI3 components', 'full-size preview stays pinned while scrolling', 'no horizontal overflow', 'no runtime errors', 'zero network requests'], performance: { sizeChangesRegenerateGeometry: true, previewRendersFor40RapidEdits: 1, resizeInteractionMs, maximumPreviewPixels: 120000 }, samples: { opaquePixels: first.opaque, transparentPixels: first.transparent, partialAlphaPixels: first.partial } };
   await writeFile('artifacts/browser-results.json', JSON.stringify(summary, null, 2));
   console.log(JSON.stringify(summary, null, 2));
 } finally { await browser.close(); }

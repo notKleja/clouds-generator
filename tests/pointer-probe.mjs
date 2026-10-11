@@ -47,7 +47,7 @@ try{
   await page.mouse.up();assert.equal(await frame.evaluate(()=>[...document.querySelectorAll('*')].some(el=>el.hasPointerCapture?.(1))),false);
   await page.keyboard.press('Escape');
   await frame.locator('#shape-edit-preview').click();
-  await frame.waitForFunction(()=>!document.querySelector('#preview-header').classList.contains('compact')&&document.querySelector('#preview').getBoundingClientRect().height>201);
+  await frame.waitForFunction(()=>document.querySelector('#preview').getBoundingClientRect().height>201);
   const point=frame.locator('[data-point="2"]'),pointBox=await point.boundingBox();
   const beforeShape=await frame.locator('#cloud-preview').evaluate(c=>c.toDataURL());
   await page.mouse.move(pointBox.x+12,pointBox.y+12);await page.mouse.down();assert.equal(await point.evaluate(el=>el.hasPointerCapture(1)),true);

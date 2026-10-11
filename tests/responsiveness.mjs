@@ -67,14 +67,15 @@ try{
  await page.evaluate(()=>window.scrollTo(0,0));await page.waitForTimeout(200);
  await page.screenshot({path:'artifacts/enhanced-light.png'});
  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
- await page.waitForFunction(()=>document.querySelector('#preview-header').classList.contains('compact'));
+ await page.waitForFunction(()=>window.scrollY>48);
+ assert.equal((await page.locator('#preview').boundingBox()).height,202);
  await page.getByRole('button',{name:'Toggle preview checkerboard',exact:true}).click();
  assert.equal(await page.locator('#preview').evaluate(el=>el.classList.contains('checker')),true);
  await page.evaluate(()=>document.documentElement.classList.add('figma-dark'));
- await page.screenshot({path:'artifacts/enhanced-compact.png'});
+ await page.screenshot({path:'artifacts/enhanced-sticky.png'});
  assert.equal((await page.locator('#preview-header').boundingBox()).y,0);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);
- const report={result:'PASS',before,after,checks:['continuous drag updates','canvas backing-store reuse','one-step gesture undo/redo','ratio lock','size presets','export-resolution repaint skipped','selection and inserted copies reset history', 'repeated Reset keeps preview current','unchanged Update disabled','compact preview controls remain accessible']};
+ const report={result:'PASS',before,after,checks:['continuous drag updates','canvas backing-store reuse','one-step gesture undo/redo','ratio lock','size presets','export-resolution repaint skipped','selection and inserted copies reset history', 'repeated Reset keeps preview current','unchanged Update disabled','full-size sticky preview controls remain accessible']};
  await writeFile('artifacts/responsiveness-results.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }finally{await browser.close();}
