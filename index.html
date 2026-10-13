@@ -61,7 +61,7 @@
 </svg>
 </fig-button></div></div>
     <p class="selection-hint muted" id="recipe-label">Procedural cloud</p>
-    <div class="shape-tools"><fig-button id="shape-edit" variant="secondary" type="toggle" aria-pressed="false">Edit shape</fig-button><fig-button id="shape-reset" variant="ghost" disabled>Reset shape</fig-button></div><p id="shape-help" class="hint" hidden>Drag the five points in the preview. Arrow keys nudge; Shift moves farther. Esc cancels a drag.</p>
+    <div class="shape-tools"><fig-button id="shape-edit" variant="secondary" type="toggle" aria-pressed="false">Edit shape</fig-button><fig-button id="shape-reset" variant="ghost" disabled>Reset shape</fig-button></div><p id="shape-help" class="hint" hidden>Drag points to reshape; drag the box edges or corners to resize procedurally. Hold Shift while dragging the box to keep proportions. Arrow keys nudge. Esc cancels a drag.</p>
     <div id="appearance-controls"></div>
     <fig-field direction="horizontal"><label>Color</label><div class="color-controls"><fig-input-color id="color" picker-mode="solid" picker-dialog-position="center" value="#FFFFFF" text alpha="false" aria-label="Cloud color"></fig-input-color><fig-input-number id="opacity" value="100" min="0" max="100" units="%" aria-label="Cloud opacity"></fig-input-number></div></fig-field>
     <fig-field direction="horizontal"><label>Seed</label><div class="seed-row"><fig-input-number id="seed" value="992" min="0" max="999999" aria-label="Seed"></fig-input-number><fig-button id="randomize" variant="secondary" size="compact">Shuffle</fig-button></div></fig-field>
@@ -72,8 +72,7 @@
     <details id="texture"><summary>Texture <span class="muted">Fine-tune the noise</span></summary><div id="texture-controls"></div></details>
   </section>
   <section aria-label="Output settings">
-    <div class="section-heading"><h2>Cloud size</h2><fig-dropdown id="size-preset" value="custom" label="Quick size" variant="ghost"><option value="custom">Custom size</option><option value="square">Square · 512</option><option value="wide">Wide · 1000 × 400</option><option value="portrait">Portrait · 600 × 900</option></fig-dropdown></div>
-    <div class="dimensions"><fig-field><label>Width</label><fig-input-number id="width" value="1000" min="64" max="4096" aria-label="Width"></fig-input-number></fig-field><fig-button id="ratio-lock" variant="secondary" type="toggle" icon aria-label="Lock aspect ratio" aria-pressed="false" title="Lock aspect ratio"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="m6.3 5.4 1.2-1.2a3 3 0 0 1 4.3 4.3l-1.2 1.2m-4.3.9-1.2 1.2a3 3 0 0 1-4.3-4.3L2 6.3M5.5 8.5l3-3" transform="translate(1 0)" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></fig-button><fig-field><label>Height</label><fig-input-number id="height" value="700" min="64" max="4096" aria-label="Height"></fig-input-number></fig-field></div>
+    <div class="section-heading"><h2>Export</h2><span class="muted">Resize in Edit shape</span></div>
     <fig-field direction="horizontal" class="resolution-row"><label>Resolution</label><fig-dropdown id="quality" value="2" label="Resolution multiplier"><option value="1">1×</option><option value="2">2×</option><option value="3">3×</option></fig-dropdown><span class="muted">Export only</span></fig-field>
     <p class="hint">Clouds always export with a transparent background.</p>
     <p class="hint" id="export-info">2000 × 1400 px · Transparent PNG</p>
