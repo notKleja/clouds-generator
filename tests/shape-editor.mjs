@@ -57,8 +57,8 @@ try {
   const backing = await page
     .locator('#cloud-preview')
     .evaluate((c) => ({ width: c.width, height: c.height }));
-  await page.locator('#width input').evaluate((el) => {
-    el.value = '1600';
+  await page.locator('#puffiness fig-input-number input').evaluate((el) => {
+    el.value = '90';
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   });

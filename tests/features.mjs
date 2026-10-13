@@ -1,3 +1,4 @@
+import { cloudSize, setCloudSize } from './resize-helpers.mjs';
 import { chromium } from 'playwright';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -207,13 +208,12 @@ try {
   await page.waitForFunction(
     () => document.querySelectorAll('.variation:not(:disabled)').length === 6,
   );
-  await page.locator('#width input').fill('160');
-  await page.locator('#width input').press('Tab');
+  await setCloudSize(page, { width: 160 });
   const oldSeed = await page.locator('#seed input').inputValue();
   await page.locator('.variation').nth(2).click();
   assert.notEqual(await page.locator('#seed input').inputValue(), oldSeed);
   assert.equal(
-    await page.locator('#width input').inputValue(),
+    String((await cloudSize(page)).width),
     '160',
     'Variation selection must adopt only its seed and preserve later edits',
   );

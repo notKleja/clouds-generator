@@ -208,23 +208,6 @@ summary .muted {
 details[open] summary {
   margin-bottom: 6px;
 }
-.dimensions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 58px;
-  gap: 8px;
-}
-.dimensions fig-field {
-  min-width: 0;
-  gap: 5px;
-}
-.dimensions fig-field > label {
-  font-size: 10px;
-  color: var(--muted);
-}
-.dimensions fig-input-number,
-.dimensions fig-dropdown {
-  width: 100%;
-}
 .background-row {
   display: flex;
   align-items: center;
@@ -274,17 +257,6 @@ body.busy main {
 .preset {
   display: block;
 }
-.dimensions fig-field {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 0;
-}
-.dimensions fig-field > label {
-  width: auto;
-  max-width: none;
-  max-height: none;
-}
 details {
   padding: 0;
 }
@@ -308,17 +280,14 @@ summary .muted {
   color-scheme: light;
 }
 
-.dimensions {
-  grid-template-columns: 1fr 1fr;
-}
 .resolution-row fig-dropdown {
   width: 64px;
 }
 #cloud-preview {
   position: absolute;
-  inset: 32px 12px;
+  inset: 44px 12px 36px;
   width: calc(100% - 24px);
-  height: calc(100% - 64px);
+  height: calc(100% - 80px);
   object-fit: contain;
 } /* Editing tools use the existing FigUI3 components. */
 .preview-title {
@@ -359,25 +328,6 @@ summary .muted {
 .selection-hint {
   margin: -4px 0 9px;
   min-height: 12px;
-}
-.dimensions {
-  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr);
-  align-items: end;
-  gap: 6px;
-}
-#ratio-lock {
-  width: 28px;
-  height: 24px;
-  margin-bottom: 0;
-}
-#ratio-lock[selected] {
-  color: var(--figma-color-text-brand, #0d99ff);
-  background: var(--figma-color-bg-selected, #e5f4ff);
-  border-color: var(--figma-color-border-selected, #0d99ff);
-}
-#size-preset {
-  width: 146px;
-  font-size: 10px;
 }
 
 .preview-options .section-heading {
@@ -696,4 +646,64 @@ body.busy #plugin-footer .actions {
 .shadow-style > label {
   flex-basis: 86px;
   width: 86px;
+}
+
+/* The box edits procedural dimensions; round controls edit the ridge points. */
+#shape-bounds {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--brand);
+  box-shadow: 0 0 0 1px #ffffff40;
+}
+.resize-handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 3;
+}
+.resize-handle::after {
+  content: '';
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin: auto;
+  border: 1px solid var(--brand);
+  background: #fff;
+}
+.resize-handle:is(:hover, :focus-visible, .dragging)::after {
+  background: var(--brand);
+  border-color: #fff;
+  box-shadow: 0 0 0 1px var(--brand);
+}
+.resize-handle[data-resize='n'],
+.resize-handle[data-resize='s'] {
+  cursor: ns-resize;
+}
+.resize-handle[data-resize='e'],
+.resize-handle[data-resize='w'] {
+  cursor: ew-resize;
+}
+.resize-handle[data-resize='nw'],
+.resize-handle[data-resize='se'] {
+  cursor: nwse-resize;
+}
+.resize-handle[data-resize='ne'],
+.resize-handle[data-resize='sw'] {
+  cursor: nesw-resize;
+}
+
+.resize-handle:is(:hover, :focus, :active) {
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+.resize-handle:focus-visible::after {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }

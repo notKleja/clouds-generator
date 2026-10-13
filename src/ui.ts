@@ -7,7 +7,7 @@ import { batchRecipes, presetRecipe } from './library';
 import { ShapeEditor } from './shape-editor';
 import { installControlCapture } from './drag';
 import { cloudRecipe } from './settings';
-import { LatestPreview, RecipeHistory, resizeLocked } from './interaction';
+import { LatestPreview, RecipeHistory } from './interaction';
 import { paintPreview, rasterize } from './render';
 import { DEFAULTS, PRESETS, normalize, createSVG, exportSize, type Settings } from './cloud';
 
@@ -52,8 +52,6 @@ let busy = false,
   touched = false;
 let lastPreviewKey = '';
 const history = new RecipeHistory(settings);
-let ratioLocked = false;
-let lockedRatio = settings.width / settings.height;
 const bridgeSession = document.querySelector<HTMLMetaElement>(
   'meta[name="clouds-session"]',
 )?.content;
@@ -181,16 +179,7 @@ function sync() {
   for (const slider of sliders) {
     setValue(slider.key, settings[slider.key] as number);
   }
-  for (const key of [
-    'seed',
-    'width',
-    'height',
-    'quality',
-    'color',
-    'opacity',
-    'gradientColor',
-    'shadowMode',
-  ] as const)
+  for (const key of ['seed', 'quality', 'color', 'opacity', 'gradientColor', 'shadowMode'] as const)
     setValue(key, settings[key]);
   get('self-shadows').toggleAttribute('checked', settings.selfShadows);
   get('shadow-options').hidden = !settings.selfShadows;
@@ -215,18 +204,6 @@ function sync() {
       button.setAttribute('aria-pressed', String(button.dataset.preset === settings.preset)),
     );
   syncAvailability();
-  get('ratio-lock').setAttribute('aria-pressed', String(ratioLocked));
-  get('ratio-lock').toggleAttribute('selected', ratioLocked);
-  get('ratio-lock').title = ratioLocked ? 'Aspect ratio locked' : 'Lock aspect ratio';
-  const sizePreset =
-    settings.width === 512 && settings.height === 512
-      ? 'square'
-      : settings.width === 1000 && settings.height === 400
-        ? 'wide'
-        : settings.width === 600 && settings.height === 900
-          ? 'portrait'
-          : 'custom';
-  setValue('size-preset', sizePreset);
   try {
     const size = exportSize(settings);
     get('export-info').textContent = `${size.width} × ${size.height} px · Transparent PNG`;
@@ -324,7 +301,7 @@ function change(patch: Partial<Settings>, commit = true) {
   }
   sync();
 }
-for (const key of ['seed', 'width', 'height', 'quality', 'opacity'] as const) {
+for (const key of ['seed', 'quality', 'opacity'] as const) {
   const update = (commit: boolean) => {
     const raw = get<HTMLInputElement>(key).value;
     if (String(raw).trim() === '' || !Number.isFinite(Number(raw))) {
@@ -332,12 +309,7 @@ for (const key of ['seed', 'width', 'height', 'quality', 'opacity'] as const) {
       return;
     }
     const value = Number(raw);
-    if (!commit && (key === 'width' || key === 'height') && (value < 64 || value > 4096)) return;
-    const patch =
-      ratioLocked && (key === 'width' || key === 'height')
-        ? resizeLocked(key, value, lockedRatio)
-        : { [key]: value };
-    change(patch, commit);
+    change({ [key]: value }, commit);
   };
   get(key).addEventListener('input', () => update(false));
   get(key).addEventListener('change', () => update(true));
@@ -392,29 +364,11 @@ const updatePreviewColor = () => {
 };
 get('sky').addEventListener('input', updatePreviewColor);
 get('sky').addEventListener('change', updatePreviewColor);
-get('ratio-lock').onclick = () => {
-  ratioLocked = !ratioLocked;
-  lockedRatio = settings.width / settings.height;
-  sync();
-};
-get('size-preset').addEventListener('change', () => {
-  const sizes: Record<string, { width: number; height: number }> = {
-    square: { width: 512, height: 512 },
-    wide: { width: 1000, height: 400 },
-    portrait: { width: 600, height: 900 },
-  };
-  const size = sizes[get<HTMLInputElement>('size-preset').value];
-  if (size) {
-    lockedRatio = size.width / size.height;
-    change(size);
-  }
-});
 function restoreRecipe(recipe: Settings) {
   if (busy) return;
   touched = true;
   previews.invalidate();
   settings = { ...recipe };
-  lockedRatio = settings.width / settings.height;
   sync();
   schedulePreview();
   if (IS_WEB) post({ type: 'save-draft', settings });
@@ -453,7 +407,6 @@ get('randomize').onclick = () => {
 get('reset').onclick = () => {
   shapeEditor.finish();
   previews.invalidate();
-  lockedRatio = DEFAULTS.width / DEFAULTS.height;
   change({ ...DEFAULTS });
   schedulePreview();
   status('Default cloud restored.');
@@ -719,7 +672,6 @@ function applySelection(value: Selected, load: boolean) {
     previews.invalidate();
     settings = cloudRecipe(value.settings);
     history.reset(settings);
-    lockedRatio = settings.width / settings.height;
     sync();
     schedulePreview();
     status(
@@ -798,7 +750,6 @@ window.onmessage = (event) => {
         msg.selection?.settings || msg.selections?.[0]?.settings || msg.settings || DEFAULTS,
       );
       history.reset(settings);
-      lockedRatio = settings.width / settings.height;
       applySelectionState(msg, true);
       sync();
       schedulePreview();

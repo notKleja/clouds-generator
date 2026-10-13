@@ -1,3 +1,4 @@
+import { setCloudSize } from './resize-helpers.mjs';
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -67,10 +68,8 @@ try {
   assert.equal(await page.locator('#update').isVisible(), false);
   assert.equal(await page.locator('#cloud-field').isVisible(), false);
   assert.equal(await page.locator('#gradient-enabled input').isChecked(), true);
-  await page.locator('#width input').fill('400');
-  await page.locator('#width input').press('Tab');
-  await page.locator('#height input').fill('300');
-  await page.locator('#height input').press('Tab');
+  await setCloudSize(page, { width: 400 });
+  await setCloudSize(page, { height: 300 });
   await page.locator('#quality select').selectOption('2');
   await page.locator('#self-shadows input').check();
   await page.locator('#shadowMode select').selectOption('transparency');
@@ -164,7 +163,9 @@ try {
   await page.getByRole('button', { name: 'Save preset', exact: true }).click();
   await page.getByRole('button', { name: 'Apply saved preset Web morning', exact: true }).waitFor();
   await page.reload();
-  await page.waitForFunction(() => document.querySelector('#width input')?.value === '400');
+  await page.waitForFunction(
+    () => document.querySelector('#preview-size')?.textContent === '400 × 300',
+  );
   assert.equal(await page.locator('#seed-lock input').isChecked(), true);
   await page.locator('#saved-library summary').click();
   await page.getByRole('button', { name: 'Apply saved preset Web morning', exact: true }).waitFor();

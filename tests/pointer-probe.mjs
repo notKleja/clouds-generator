@@ -22,7 +22,7 @@ try {
   await frame.waitForFunction(
     () => document.querySelector('#cloud-preview')?.dataset.ready === 'true',
   );
-  const input = frame.locator('#width input');
+  const input = frame.locator('#seed input');
   await input.scrollIntoViewIfNeeded();
   await frame.evaluate(() => {
     window.outsideMoves = 0;
@@ -35,7 +35,7 @@ try {
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
   await page.mouse.down();
   const captured = await frame
-    .locator('#width')
+    .locator('#seed')
     .evaluate((el) => el.hasPointerCapture(1) || el.querySelector('input').hasPointerCapture(1));
   await page.mouse.move(b.x + b.width / 2 + 20, b.y + b.height / 2, { steps: 2 });
   const insideValue = await input.inputValue();
@@ -48,7 +48,7 @@ try {
     insideValue,
     outsideValue,
     outsideMoves: await frame.evaluate(() => window.outsideMoves),
-    captureAfterRelease: await frame.locator('#width').evaluate((el) => el.hasPointerCapture(1)),
+    captureAfterRelease: await frame.locator('#seed').evaluate((el) => el.hasPointerCapture(1)),
   };
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
   result.valueAfterReturn = await input.inputValue();
@@ -107,9 +107,22 @@ try {
       await frame.evaluate(() => document.documentElement.classList.contains('control-dragging')),
       false,
     );
-    assert.equal(await frame.locator('#width').evaluate((el) => el.hasPointerCapture(1)), false);
+    assert.equal(await frame.locator('#seed').evaluate((el) => el.hasPointerCapture(1)), false);
     await page.mouse.up();
     await page.keyboard.up('Alt');
+    await frame.locator('#shape-edit-preview').click();
+    const resize = frame.locator('[data-resize="e"]');
+    const rb = await resize.boundingBox();
+    await page.mouse.move(rb.x + 12, rb.y + 12);
+    await page.mouse.down();
+    assert.equal(await resize.evaluate((el) => el.hasPointerCapture(1)), true);
+    await page.mouse.move(800, rb.y + 12, { steps: 8 });
+    assert.equal(await frame.locator('#preview-size').innerText(), '4096 × 700');
+    await page.mouse.up();
+    assert.equal(await resize.evaluate((el) => el.hasPointerCapture(1)), false);
+    await frame.locator('#undo').click();
+    assert.equal(await frame.locator('#preview-size').innerText(), '1000 × 700');
+    await frame.locator('#shape-edit-preview').click();
     await frame.locator('#sky fig-swatch').scrollIntoViewIfNeeded();
     await frame.locator('#sky fig-swatch').click();
     const plane = frame.locator('.fig-fill-picker-dialog[open] .fig-fill-picker-color-area');
@@ -163,6 +176,7 @@ try {
     await page.mouse.up();
     assert.equal(await point.evaluate((el) => el.hasPointerCapture(1)), false);
     result.checks = [
+      'bounding-box resize and release outside iframe',
       'shape drag and release outside iframe',
       'shape blur cleanup',
       'number scrub outside iframe',

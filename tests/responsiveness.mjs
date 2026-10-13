@@ -1,3 +1,4 @@
+import { cloudSize, setCloudSize } from './resize-helpers.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { writeFile, readFile } from 'node:fs/promises';
@@ -101,23 +102,15 @@ try {
     (original) => document.querySelector('#cloud-preview').toDataURL() === original,
     originalPreview,
   );
-  await page.locator('#size-preset select').selectOption('wide');
-  assert.equal(await page.locator('#width input').inputValue(), '1000');
-  assert.equal(await page.locator('#height input').inputValue(), '400');
-  await page.getByRole('button', { name: 'Lock aspect ratio', exact: true }).click();
-  assert.equal(
-    await page
-      .getByRole('button', { name: 'Lock aspect ratio', exact: true })
-      .getAttribute('aria-pressed'),
-    'true',
-  );
-  await page.locator('#width input').fill('800');
-  await page.locator('#width input').press('Tab');
-  assert.equal(await page.locator('#height input').inputValue(), '320');
+  await setCloudSize(page, { width: 800, height: 400 });
+  assert.deepEqual(await cloudSize(page), { width: 800, height: 400 });
   await page.getByRole('button', { name: 'Undo change', exact: true }).click();
-  assert.equal(await page.locator('#width input').inputValue(), '1000');
+  assert.deepEqual(await cloudSize(page), { width: 800, height: 700 });
   await page.getByRole('button', { name: 'Redo change', exact: true }).click();
-  assert.equal(await page.locator('#width input').inputValue(), '800');
+  assert.deepEqual(await cloudSize(page), { width: 800, height: 400 });
+  await page.waitForFunction(
+    () => document.querySelector('#preview-activity').textContent === 'Live',
+  );
   await page.waitForTimeout(100);
   const count = await page.evaluate(() => window.paints.length),
     noise = await page.evaluate(() => window.svgRenders);
@@ -230,8 +223,7 @@ try {
       'continuous drag updates',
       'canvas backing-store reuse',
       'one-step gesture undo/redo',
-      'ratio lock',
-      'size presets',
+      'bounding-box dimensions and undo/redo',
       'export-resolution repaint skipped',
       'selection and inserted copies reset history',
       'repeated Reset keeps preview current',

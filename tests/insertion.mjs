@@ -1,3 +1,4 @@
+import { cloudSize, setCloudSize } from './resize-helpers.mjs';
 import { chromium } from 'playwright';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -120,10 +121,8 @@ try {
   assert.equal(await page.locator('#shadowMode select').inputValue(), 'transparency');
   assert.equal(await page.locator('#gradient-enabled input').isChecked(), true);
   assert.equal(await page.locator('#cloud-field').isVisible(), false);
-  await page.locator('#width input').fill('128');
-  await page.locator('#width input').press('Tab');
-  await page.locator('#height input').fill('96');
-  await page.locator('#height input').press('Tab');
+  await setCloudSize(page, { width: 128 });
+  await setCloudSize(page, { height: 96 });
   await page.locator('#quality select').selectOption('1');
   await page.getByRole('button', { name: 'Insert cloud ↗', exact: true }).click();
   await host.waitForFunction(() => window.droppedDone === true);
@@ -175,7 +174,7 @@ try {
     { timeout: 7000 },
   );
   assert.equal(await page.locator('#seed input').inputValue(), '4321');
-  assert.equal(await page.locator('#width input').inputValue(), '192');
+  assert.equal(String((await cloudSize(page)).width), '192');
   assert.equal(
     (await page.locator('#color').getAttribute('value')).slice(0, 7).toUpperCase(),
     '#ABCDEF',

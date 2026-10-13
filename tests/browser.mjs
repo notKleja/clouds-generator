@@ -1,3 +1,4 @@
+import { setCloudSize } from './resize-helpers.mjs';
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -157,10 +158,8 @@ try {
   await page.waitForTimeout(200);
   const cachedRenders = await page.evaluate(() => window.svgRenders);
   const editStarted = Date.now();
-  await page.locator('#width input').fill('800');
-  await page.locator('#width input').press('Tab');
-  await page.locator('#height input').fill('240');
-  await page.locator('#height input').press('Tab');
+  await setCloudSize(page, { width: 800 });
+  await setCloudSize(page, { height: 240 });
   await page.locator('#quality select').selectOption('3');
   await page.waitForFunction(
     () =>
@@ -221,10 +220,8 @@ try {
   }
   assert.equal(hashes.size, 6);
   await page.locator('#transparent input').uncheck();
-  await page.locator('#width input').fill('800');
-  await page.locator('#width input').press('Tab');
-  await page.locator('#height input').fill('600');
-  await page.locator('#height input').press('Tab');
+  await setCloudSize(page, { width: 800 });
+  await setCloudSize(page, { height: 600 });
   const coloredPreview = await exportCloud();
   assert.equal(coloredPreview.corner[3], 0);
   await page.locator('#transparent input').check();
@@ -235,8 +232,7 @@ try {
     'Preview backgrounds must not affect export',
   );
   assert.equal(checkerPreview.settings.background, 'transparent');
-  await page.locator('#width input').fill('4096');
-  await page.locator('#width input').press('Tab');
+  await setCloudSize(page, { width: 4096 });
   await page.locator('#quality select').selectOption('3');
   assert.equal(
     await page.getByRole('button', { name: 'Insert cloud ↗', exact: true }).isDisabled(),
