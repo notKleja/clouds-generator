@@ -61,9 +61,11 @@ Rendering shows its current stage and elapsed time. **Cancel** stops pending exp
 
 ## Dimensions and export quality
 
+**Flatten bottom** blends the lower wisps toward a soft horizontal base derived from the cloud geometry. Zero preserves the original silhouette; higher values produce a flatter bottom. The same base affects preview, export, shadows, gradients, saved presets, and selected-layer recipes.
+
 Width changes the seeded billow count and spacing; height develops their upward growth. The original default silhouette is preserved until a shape control changes it. The generated cloud is tightly cropped and fitted to the requested dimensions, so extreme proportions still affect its appearance.
 
-In Edit shape, drag the bounding box edges or corners to resize procedurally. Hold Shift while dragging to preserve proportions. Each drag is one undo step; Escape cancels it. The pixel width/height inputs are replaced by these shared plugin and web controls. A separate 1×/2×/3× resolution multiplier changes PNG density without changing layer dimensions. Each export is limited to 4096 pixels per side and 16 megapixels. Aggregate batches are limited to 32 megapixels and 128 MB of encoded image data.
+In Edit shape, drag the bounding box edges or corners to resize procedurally. Hold Shift while dragging to preserve proportions. Resize motion follows the drag and eases into the fitted preview on release, with reduced-motion support. Each drag is one undo step; Escape cancels it. The pixel width/height inputs are replaced by these shared plugin and web controls. A separate 1×/2×/3× resolution multiplier changes PNG density without changing layer dimensions. Each export is limited to 4096 pixels per side and 16 megapixels. Aggregate batches are limited to 32 megapixels and 128 MB of encoded image data.
 
 Clouds are transparent PNG image fills, not editable vector paths. Their versioned recipes are stored on the layer. Version 1 recipes migrate to version 2; existing recipes retain their saved lighting choices, and recipes predating these controls retain dark-shading/no-gradient behavior; malformed or future versions are reported explicitly rather than guessed.
 

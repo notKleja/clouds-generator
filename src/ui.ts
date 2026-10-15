@@ -90,6 +90,14 @@ const sliders: {
   group: string;
 }[] = [
   { key: 'puffiness', label: 'Puffiness', min: 0, max: 100, step: 1, group: 'appearance-controls' },
+  {
+    key: 'bottomFlattening',
+    label: 'Flatten bottom',
+    min: 0,
+    max: 100,
+    step: 1,
+    group: 'appearance-controls',
+  },
   { key: 'softness', label: 'Softness', min: 1, max: 50, step: 1, group: 'appearance-controls' },
   {
     key: 'displacement',

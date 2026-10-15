@@ -12,6 +12,7 @@ export interface Settings {
   displacement: number;
   octaves: number;
   puffiness: number;
+  bottomFlattening: number;
   color: string;
   opacity: number;
   width: number;
@@ -38,6 +39,7 @@ export const DEFAULTS: Settings = {
   displacement: 145,
   octaves: 5,
   puffiness: 75,
+  bottomFlattening: 0,
   color: '#FFFFFF',
   opacity: 100,
   width: 1000,
@@ -175,6 +177,7 @@ export function normalize(input: unknown): Settings {
     displacement: bounded(s.displacement, d.displacement, 0, 260),
     octaves: bounded(s.octaves, d.octaves, 1, 8, true),
     puffiness: bounded(s.puffiness, d.puffiness, 0, 100),
+    bottomFlattening: bounded(s.bottomFlattening, 0, 0, 100),
     color: color(s.color, d.color),
     sky: color(s.sky, d.sky),
     opacity: bounded(s.opacity, d.opacity, 0, 100),
@@ -295,12 +298,28 @@ export function createSVG(
     .join('');
   const f = layout.frame,
     frequency = s.frequency;
+  // A seeded cloud meets a soft base plane before crop detection and lighting.
+  // Zero emits the original SVG unchanged, including its wispy lower silhouette.
+  let baseMask = '';
+  if (s.bottomFlattening > 0) {
+    const base = layout.ellipses[0];
+    const start =
+      Math.max(...layout.ellipses.map((l) => l.y + l.ry)) +
+      s.softness * 2 +
+      s.displacement * 0.2 +
+      4;
+    const end = base.y + base.ry * 0.4;
+    const t = Math.pow(s.bottomFlattening / 100, 0.65);
+    const plane = start + (end - start) * t;
+    const feather = Math.max(2, s.softness * (1 - t * 0.75));
+    baseMask = `<linearGradient id="base-fade" gradientUnits="userSpaceOnUse" x1="0" y1="${plane - feather}" x2="0" y2="${plane + feather}"><stop stop-color="white" stop-opacity="1"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient><mask id="flat-base" maskUnits="userSpaceOnUse" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}"><rect x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" fill="url(#base-fade)"/></mask>`;
+  }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${frame.x} ${frame.y} ${frame.width} ${frame.height}" preserveAspectRatio="${crop ? 'none' : 'xMidYMid meet'}">
 <defs><filter id="cloud" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feGaussianBlur in="SourceGraphic" stdDeviation="${layout.blur}" result="soft"/>
 <feTurbulence type="fractalNoise" baseFrequency="${frequency}" numOctaves="${s.octaves}" seed="${s.seed}" result="noise"/>
 <feDisplacementMap in="soft" in2="noise" scale="${layout.displacement}" xChannelSelector="R" yChannelSelector="G"/>
-</filter></defs>
+</filter>${baseMask}</defs>
 ${s.background === 'sky' ? `<rect id="sky" x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" fill="${s.sky}"/>` : ''}
-<g fill="${s.color}" opacity="${s.opacity / 100}" filter="url(#cloud)">${ellipses}</g></svg>`;
+<g fill="${s.color}" opacity="${s.opacity / 100}" filter="url(#cloud)"${baseMask ? ' mask="url(#flat-base)"' : ''}>${ellipses}</g></svg>`;
 }

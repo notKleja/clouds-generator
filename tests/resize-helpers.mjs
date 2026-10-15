@@ -13,7 +13,9 @@ export async function setCloudSize(page, size) {
   for (const axis of ['width', 'height']) {
     if (size[axis] === undefined) continue;
     await page.waitForFunction(
-      () => document.querySelector('#preview-activity').textContent === 'Live',
+      () =>
+        document.querySelector('#preview-activity').textContent === 'Live' &&
+        document.querySelector('#cloud-preview').getAnimations().length === 0,
     );
     const current = await cloudSize(page);
     if (size[axis] === current[axis]) continue;
@@ -29,7 +31,9 @@ export async function setCloudSize(page, size) {
     await host.mouse.move(x + (axis === 'width' ? delta : 0), y + (axis === 'height' ? delta : 0));
     await host.mouse.up();
     await page.waitForFunction(
-      () => document.querySelector('#preview-activity').textContent === 'Live',
+      () =>
+        document.querySelector('#preview-activity').textContent === 'Live' &&
+        document.querySelector('#cloud-preview').getAnimations().length === 0,
     );
   }
   if (!wasOpen) await toggle.click();

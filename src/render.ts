@@ -17,6 +17,7 @@ export function geometryKey(s: Settings): string {
     s.displacement,
     s.octaves,
     s.puffiness,
+    s.bottomFlattening,
     ...s.shape.flatMap((p) => [p.x, p.y]),
   ].join(':');
 }

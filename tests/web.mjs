@@ -71,6 +71,8 @@ try {
   await setCloudSize(page, { width: 400 });
   await setCloudSize(page, { height: 300 });
   await page.locator('#quality select').selectOption('2');
+  await page.locator('#bottomFlattening fig-input-number input').fill('65');
+  await page.locator('#bottomFlattening fig-input-number input').press('Tab');
   await page.locator('#self-shadows input').check();
   await page.locator('#shadowMode select').selectOption('transparency');
   const downloading = page.waitForEvent('download');
@@ -89,6 +91,7 @@ try {
     JSON.parse(localStorage.getItem('clouds-generator:web:v1')),
   );
   assert.equal(stored.draft.shadowMode, 'transparency');
+  assert.equal(stored.draft.bottomFlattening, 65);
   // Render the downloaded recipe directly through the shared engine: exact PNG parity.
   const probe = await build({
     stdin: {
@@ -167,6 +170,7 @@ try {
     () => document.querySelector('#preview-size')?.textContent === '400 × 300',
   );
   assert.equal(await page.locator('#seed-lock input').isChecked(), true);
+  assert.equal(await page.locator('#bottomFlattening fig-input-number input').inputValue(), '65');
   await page.locator('#saved-library summary').click();
   await page.getByRole('button', { name: 'Apply saved preset Web morning', exact: true }).waitFor();
   await page.locator('#shape-edit-preview').click();

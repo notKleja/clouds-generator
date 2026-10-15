@@ -43,7 +43,8 @@ try {
       page.waitForFunction(
         () =>
           document.querySelector('#cloud-preview').dataset.ready === 'true' &&
-          document.querySelector('#preview-activity').textContent === 'Live',
+          document.querySelector('#preview-activity').textContent === 'Live' &&
+          document.querySelector('#cloud-preview').getAnimations().length === 0,
       );
     const size = async () =>
       (await page.locator('#preview-size').innerText()).split(' × ').map(Number);

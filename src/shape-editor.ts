@@ -1,3 +1,4 @@
+import { ResizeMotion } from './resize-motion';
 import { resizeLocked } from './interaction';
 import { cloudLayout, normalize, type Settings, type CropBounds } from './cloud';
 
@@ -14,7 +15,6 @@ type Gesture = {
   height: number;
   centerX: number;
   centerY: number;
-  canvasStyle: string | null;
 };
 /** Edit procedural control points in the same coordinates as the visible mask. */
 export class ShapeEditor {
@@ -25,6 +25,7 @@ export class ShapeEditor {
   private buttons: HTMLButtonElement[] = [];
   private overlay: HTMLElement;
   private bounds: HTMLDivElement;
+  private motion: ResizeMotion;
   private resizeButtons: HTMLButtonElement[] = [];
   constructor(
     private canvas: HTMLCanvasElement,
@@ -39,6 +40,7 @@ export class ShapeEditor {
     this.bounds.id = 'shape-bounds';
     this.bounds.setAttribute('aria-hidden', 'true');
     this.overlay.append(this.bounds);
+    this.motion = new ResizeMotion(canvas, () => this.positionControls());
     const edges: Record<string, string> = {
       nw: 'top left',
       n: 'top',
@@ -169,7 +171,12 @@ export class ShapeEditor {
         this.sync(this.recipe);
       }
     });
-    new ResizeObserver(() => this.position()).observe(canvas);
+    new ResizeObserver(() => this.positionControls()).observe(canvas);
+    window.addEventListener('resize', () => {
+      this.finish();
+      this.motion.reset();
+      this.position();
+    });
   }
   get viewport() {
     return this.active?.edge ? undefined : this.active?.crop;
@@ -179,6 +186,11 @@ export class ShapeEditor {
     this.position();
   }
   sync(recipe: Settings) {
+    if (
+      !this.active &&
+      (recipe.width !== this.recipe.width || recipe.height !== this.recipe.height)
+    )
+      this.motion.reset();
     this.recipe = recipe;
     this.overlay.hidden = !this.enabled || !this.crop;
     for (const id of ['shape-edit', 'shape-edit-preview']) {
@@ -200,30 +212,22 @@ export class ShapeEditor {
     if (!drag) return;
     this.active = undefined;
     drag.button.classList.remove('dragging');
-    if (drag.edge) {
-      if (drag.canvasStyle === null) this.canvas.removeAttribute('style');
-      else this.canvas.setAttribute('style', drag.canvasStyle);
-    }
+    if (drag.edge) this.motion.release(this.recipe.width / this.recipe.height);
     if (drag.button.hasPointerCapture(drag.id)) drag.button.releasePointerCapture(drag.id);
     this.change({}, true);
     this.reframe();
   }
   private contentRect() {
-    const r = this.canvas.getBoundingClientRect(),
-      scale = Math.min(r.width / this.canvas.width, r.height / this.canvas.height);
-    const width = this.canvas.width * scale,
-      height = this.canvas.height * scale;
-    return {
-      left: r.left + (r.width - width) / 2,
-      top: r.top + (r.height - height) / 2,
-      width,
-      height,
-    };
+    const rect = this.motion.rect(),
+      parent = this.overlay.getBoundingClientRect();
+    return { ...rect, left: rect.left + parent.left, top: rect.top + parent.top };
   }
   private start(event: PointerEvent, index: number, button: HTMLButtonElement, edge?: string) {
     if (!event.isPrimary || event.button !== 0 || this.busy() || !this.crop) return;
     event.preventDefault();
     this.finish();
+    if (edge) this.motion.hold();
+    else this.motion.reset();
     const rect = this.contentRect();
     if (!rect.width || !rect.height) return;
     const parent = this.overlay.getBoundingClientRect();
@@ -242,7 +246,6 @@ export class ShapeEditor {
       height: rect.height,
       centerX: rect.left - parent.left + rect.width / 2,
       centerY: rect.top - parent.top + rect.height / 2,
-      canvasStyle: this.canvas.getAttribute('style'),
     };
     button.classList.add('dragging');
     // A pending tight-crop paint must not replace this gesture's frozen view.
@@ -264,15 +267,19 @@ export class ShapeEditor {
         (2 * Math.max(1, Math.min(drag.centerX - 12, parent.width - drag.centerX - 12))) / width,
         (2 * Math.max(1, Math.min(drag.centerY - 44, parent.height - drag.centerY - 36))) / height,
       );
-      Object.assign(this.canvas.style, {
-        inset: 'auto',
-        transform: 'none',
-        left: `${drag.centerX - (width * scale) / 2}px`,
-        top: `${drag.centerY - (height * scale) / 2}px`,
-        width: `${width * scale}px`,
-        height: `${height * scale}px`,
+      this.motion.drag({
+        left: drag.centerX - (width * scale) / 2,
+        top: drag.centerY - (height * scale) / 2,
+        width: width * scale,
+        height: height * scale,
       });
     }
+    this.positionControls();
+  }
+  private positionControls() {
+    const crop = this.viewport || this.crop;
+    if (!crop) return;
+    const parent = this.overlay.getBoundingClientRect();
     const rect = this.contentRect();
     const left = rect.left - parent.left,
       top = rect.top - parent.top;

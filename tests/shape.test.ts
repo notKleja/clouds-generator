@@ -34,3 +34,14 @@ test('pulling the middle handle develops the cloud locally without changing the 
   assert.deepEqual(history.undo(s).shape, DEFAULTS.shape);
   assert.deepEqual(history.redo().shape, s.shape);
 });
+
+test('bottom flattening is bounded, defaults off for old recipes, and invalidates geometry', () => {
+  assert.equal(normalize({}).bottomFlattening, 0);
+  assert.equal(normalize({ bottomFlattening: -5 }).bottomFlattening, 0);
+  assert.equal(normalize({ bottomFlattening: 140 }).bottomFlattening, 100);
+  assert.equal(normalize({ bottomFlattening: NaN }).bottomFlattening, 0);
+  const flattened = normalize({ ...DEFAULTS, bottomFlattening: 65 });
+  assert.equal(flattened.bottomFlattening, 65);
+  assert.notEqual(geometryKey(flattened), geometryKey(DEFAULTS));
+  assert.equal(geometryKey(flattened), geometryKey({ ...flattened, quality: 3 }));
+});
