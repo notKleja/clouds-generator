@@ -106,8 +106,8 @@ try {
     'Flattening progressively reduces the lower wisps',
   );
   assert.ok(
-    result.samples[2].bottom < result.samples[0].bottom - 10,
-    'Flattening compresses the lower contours while retaining the selected turbulence',
+    result.samples[2].deviation < result.samples[0].deviation * 0.9,
+    'Full flattening must produce a visibly flatter base',
   );
   assert.ok(
     result.upperDifference / (180 * 600) < 0.2,

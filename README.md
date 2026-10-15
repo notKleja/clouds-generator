@@ -61,7 +61,7 @@ Rendering shows its current stage and elapsed time. **Cancel** stops pending exp
 
 ## Dimensions and export quality
 
-**Flatten bottom** compresses only the lower density contours. The entire cloud then uses the same Puffiness, Spread, Softness, Turbulence, Frequency, Detail, and Seed settings. There is no separate base noise, smoothing, or turbulence attenuation: strong turbulence keeps the bottom turbulent, and Softness controls its edge just as it does the rest of the cloud. Zero preserves the original silhouette; higher values produce a flatter bottom. The same base affects preview, export, shadows, gradients, saved presets, and selected-layer recipes.
+**Flatten bottom** compresses the lower density contours and gradually reduces turbulence near the base before blur and displacement. The result retains soft wisps and seeded irregularity without clipping the finished cloud. Zero preserves the original silhouette; higher values produce a flatter bottom. The same base affects preview, export, shadows, gradients, saved presets, and selected-layer recipes.
 
 Width changes the seeded billow count and spacing; height develops their upward growth. The original default silhouette is preserved until a shape control changes it. The generated cloud is tightly cropped and fitted to the requested dimensions, so extreme proportions still affect its appearance.
 
