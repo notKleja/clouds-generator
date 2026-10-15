@@ -72,8 +72,8 @@ try {
     await page.mouse.move(b.x - 13, b.y - 8);
     const dragging = await page.evaluate(() => window.motionFrames);
     assert.ok(
-      new Set(dragging.map((f) => Math.round(f.width * 10))).size >= 3,
-      'Dragging must show intermediate resize frames',
+      Math.abs(dragging[1].width - dragging.at(-1).width) < 1,
+      'Drag geometry must reach the pointer within two frames, without easing lag',
     );
     const held = await page.locator('#shape-bounds').boundingBox();
     await sample(18, 'pointerup');
@@ -91,6 +91,49 @@ try {
     assert.ok(
       [...dragging, ...released.slice(0, -2)].every((f) => f.alignment < 2),
       'Bounds must follow the animated cloud',
+    );
+    const continuousHandle = await page.locator('[data-resize="e"]').boundingBox();
+    await page.mouse.move(continuousHandle.x + 12, continuousHandle.y + 12);
+    await page.mouse.down();
+    await page.evaluate(() => {
+      window.dragTimes = [];
+      window.measureDrag = true;
+      const tick = (now) => {
+        if (!window.measureDrag) return;
+        window.dragTimes.push(now);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await page.mouse.move(continuousHandle.x - 18, continuousHandle.y + 12, { steps: 24 });
+    await page.mouse.move(continuousHandle.x + 12, continuousHandle.y + 12, { steps: 24 });
+    const continuous = await page.evaluate(() => {
+      window.measureDrag = false;
+      const gaps = window.dragTimes
+        .slice(1)
+        .map((t, i) => t - window.dragTimes[i])
+        .sort((a, b) => a - b);
+      return {
+        frames: window.dragTimes.length,
+        p95FrameMs: gaps[Math.floor(gaps.length * 0.95)],
+        maxFrameMs: gaps.at(-1),
+        chasingAnimations: document.querySelector('#cloud-preview').getAnimations().length,
+      };
+    });
+    assert.ok(
+      continuous.frames >= 12,
+      'The display must keep rendering during continuous resizing',
+    );
+    assert.equal(
+      continuous.chasingAnimations,
+      0,
+      'Dragging must not queue easing animations behind the pointer',
+    );
+    await page.mouse.up();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('#cloud-preview').getAnimations().length === 0 &&
+        document.querySelector('#preview-activity').textContent === 'Live',
     );
     const next = await page.locator('[data-resize="se"]').boundingBox();
     await page.mouse.move(next.x + 12, next.y + 12);
@@ -136,12 +179,12 @@ try {
       'Reduced motion must not animate',
     );
     assert.deepEqual(errors, []);
-    results.push({ target, result: 'PASS', dragging, released });
+    results.push({ target, result: 'PASS', continuous, dragging, released });
     await page.close();
   }
   await mkdir('out/artifacts/motion', { recursive: true });
   await writeFile('out/artifacts/motion/results.json', JSON.stringify(results, null, 2));
-  console.log(results.map(({ target, result }) => ({ target, result })));
+  console.log(results.map(({ target, result, continuous }) => ({ target, result, continuous })));
 } finally {
   await browser.close();
 }

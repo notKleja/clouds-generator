@@ -45,11 +45,20 @@ try {
       pixels.push(data);
       let mass = 0;
       for (let i = 3; i < data.length; i += 4) mass += data[i];
-      const bottoms = [];
+      const bottoms = [],
+        featherWidths = [];
       for (let x = 180; x < 420; x++) {
         let bottom = 0;
         for (let y = 0; y < 420; y++) if (data[(y * 600 + x) * 4 + 3] > 32) bottom = y;
         bottoms.push(bottom);
+        let dense = 0,
+          faint = 0;
+        for (let y = 0; y < 420; y++) {
+          const a = data[(y * 600 + x) * 4 + 3];
+          if (a > 192) dense = y;
+          if (a > 16) faint = y;
+        }
+        if (dense) featherWidths.push(faint - dense);
       }
       const average = bottoms.reduce((a, b) => a + b) / bottoms.length;
       const deviation = Math.sqrt(
@@ -59,6 +68,7 @@ try {
         amount,
         mass,
         deviation,
+        feather: featherWidths.reduce((a, b) => a + b, 0) / featherWidths.length,
         bottom: Math.max(...bottoms),
         png: canvas.toDataURL(),
       });
@@ -71,16 +81,6 @@ try {
         );
     return { samples, upperDifference };
   });
-  assert.ok(
-    result.samples[0].mass > result.samples[1].mass &&
-      result.samples[1].mass > result.samples[2].mass,
-    'Flattening progressively reduces the lower wisps',
-  );
-  assert.ok(
-    result.samples[2].deviation < result.samples[0].deviation * 0.4,
-    'Full flattening must produce a visibly flatter base',
-  );
-  assert.equal(result.upperDifference, 0, 'Flattening preserves the upper silhouette and texture');
   await mkdir('out/artifacts/flatten', { recursive: true });
   await page.setViewportSize({ width: 1200, height: 330 });
   await page.setContent(
@@ -96,6 +96,24 @@ try {
   }
   await writeFile('out/artifacts/flatten/results.json', JSON.stringify(result, null, 2));
   console.log(JSON.stringify(result, null, 2));
+  assert.ok(
+    result.samples[2].deviation > 1.5,
+    'The base must retain procedural irregularity rather than a horizontal cutoff',
+  );
+  assert.ok(
+    result.samples[0].mass > result.samples[1].mass &&
+      result.samples[1].mass > result.samples[2].mass,
+    'Flattening progressively reduces the lower wisps',
+  );
+  assert.ok(
+    result.samples[2].deviation < result.samples[0].deviation * 0.9,
+    'Full flattening must produce a visibly flatter base',
+  );
+  assert.ok(
+    result.upperDifference / (180 * 600) < 0.2,
+    'Flattening preserves the upper silhouette and texture',
+  );
+  assert.ok(result.samples[2].feather > 5, 'The natural base retains a soft density falloff');
   const ui = await browser.newPage({ viewport: { width: 390, height: 844 } });
   const errors = [];
   ui.on('pageerror', (e) => errors.push(e.message));

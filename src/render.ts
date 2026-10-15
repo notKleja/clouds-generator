@@ -123,15 +123,17 @@ async function buildMask(
   return { canvas, crop };
 }
 
-function maskFor(settings: Settings): Promise<Mask> {
-  const key = geometryKey(settings);
+function maskFor(settings: Settings, draft = false): Promise<Mask> {
+  const key = geometryKey(settings) + (draft ? ':draft' : '');
   const hit = masks.get(key);
   if (hit) {
     masks.delete(key);
     masks.set(key, hit);
     return hit;
   }
-  const result = renderQueue.then(() => buildMask(settings));
+  const result = renderQueue.then(() =>
+    draft ? buildMask(settings, 260, 182) : buildMask(settings),
+  );
   renderQueue = result.catch(() => {});
   masks.set(key, result);
   while (masks.size > 8) masks.delete(masks.keys().next().value!);
@@ -140,7 +142,7 @@ function maskFor(settings: Settings): Promise<Mask> {
   });
   return result;
 }
-function shadedMask(mask: Mask, s: Settings): HTMLCanvasElement {
+function shadedMask(mask: Mask, s: Settings, draft = false): HTMLCanvasElement {
   const key = [
     s.selfShadows,
     s.shadowMode,
@@ -154,7 +156,7 @@ function shadedMask(mask: Mask, s: Settings): HTMLCanvasElement {
   if (mask.shaded?.key === key) return mask.shaded.canvas;
   const enabled = s.selfShadows && s.shadowStrength > 0;
   if (mask.shadow?.angle !== s.lightAngle || mask.shadow.enabled !== enabled) {
-    const scale = Math.min(240 / s.width, 180 / s.height);
+    const scale = Math.min((draft ? 128 : 240) / s.width, (draft ? 96 : 180) / s.height);
     const sample = document.createElement('canvas');
     sample.width = Math.max(1, Math.round(s.width * scale));
     sample.height = Math.max(1, Math.round(s.height * scale));
@@ -206,8 +208,9 @@ export async function paintPreview(
   settings: Settings,
   current: () => boolean,
   viewport?: CropBounds,
+  draft = false,
 ): Promise<CropBounds | undefined> {
-  const mask = await maskFor(settings);
+  const mask = await maskFor(settings, draft);
   if (!current()) return;
   // Bounded backing store, independent of export resolution and document size.
   const scale = Math.min(480 / settings.width, 250 / settings.height);
@@ -227,7 +230,7 @@ export async function paintPreview(
   const w = (mask.crop.width / view.width) * width,
     h = (mask.crop.height / view.height) * height;
   if ((settings.selfShadows && settings.shadowStrength > 0) || settings.gradientEnabled) {
-    ctx.drawImage(shadedMask(mask, settings), x, y, w, h);
+    ctx.drawImage(shadedMask(mask, settings, draft), x, y, w, h);
     ctx.globalCompositeOperation = 'destination-in';
     ctx.drawImage(mask.canvas, x, y, w, h);
   } else {

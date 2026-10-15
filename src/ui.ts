@@ -250,13 +250,15 @@ function syncAvailability() {
 }
 const previews = new LatestPreview<Settings>(
   async (recipe, current) => {
-    const key = previewKey(recipe) + JSON.stringify(shapeEditor.viewport);
+    const draft = shapeEditor.resizing;
+    const key = previewKey(recipe) + JSON.stringify(shapeEditor.viewport) + draft;
     if (key === lastPreviewKey) return;
     const crop = await paintPreview(
       get<HTMLCanvasElement>('cloud-preview'),
       recipe,
       current,
       shapeEditor.viewport,
+      draft,
     );
     if (current() && crop) {
       lastPreviewKey = key;
@@ -307,7 +309,11 @@ function change(patch: Partial<Settings>, commit = true) {
     history.commit(settings);
     if (IS_WEB) post({ type: 'save-draft', settings });
   }
-  sync();
+  if (!commit && shapeEditor.resizing) {
+    // Keep pointer handling light: the inspector catches up once the gesture ends.
+    shapeEditor.sync(settings);
+    get('preview-size').textContent = `${settings.width} × ${settings.height}`;
+  } else sync();
 }
 for (const key of ['seed', 'quality', 'opacity'] as const) {
   const update = (commit: boolean) => {

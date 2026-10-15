@@ -279,6 +279,38 @@ export function cloudLayout(input: Settings): CloudLayout {
     frame: { x: left, y: top, width: right - left, height: bottom - top },
   };
 }
+/** Compress the lower density contours before blur/noise, leaving a wispy edge. */
+function flattenedContour(
+  l: CloudLayout['ellipses'][number],
+  base: CloudLayout['ellipses'][number],
+  s: Settings,
+): string {
+  const pivot = base.y - base.ry * 0.7;
+  const phase = s.seed * 0.173;
+  const amount = s.bottomFlattening / 100;
+  const points = Array.from({ length: 64 }, (_, i) => {
+    const angle = (i * Math.PI * 2) / 64;
+    const x = l.x + Math.cos(angle) * l.rx;
+    const y = l.y + Math.sin(angle) * l.ry;
+    const depth = Math.max(0, y - pivot);
+    // A shared, gently uneven compression field preserves the joins between lobes.
+    const variation = Math.sin(x / 93 + phase) * 3 + Math.sin(x / 37 - phase * 0.7) * 1.2;
+    const range = Math.max(8, base.ry * 0.8 + s.softness * 0.4 + variation);
+    const compressed = range * (1 - Math.exp(-depth / range));
+    return { x, y: y + (compressed - depth) * amount };
+  });
+  const n = points.length;
+  const pair = (p: ShapePoint) => `${p.x.toFixed(3)} ${p.y.toFixed(3)}`;
+  let path = `M${pair(points[0])}`;
+  for (let i = 0; i < n; i++) {
+    const a = points[(i + n - 1) % n],
+      b = points[i],
+      c = points[(i + 1) % n],
+      d = points[(i + 2) % n];
+    path += `C${pair({ x: b.x + (c.x - a.x) / 6, y: b.y + (c.y - a.y) / 6 })} ${pair({ x: c.x - (d.x - b.x) / 6, y: c.y - (d.y - b.y) / 6 })} ${pair(c)}`;
+  }
+  return `<path d="${path}Z"/>`;
+}
 export function createSVG(
   input: Settings,
   pixelWidth?: number,
@@ -291,35 +323,29 @@ export function createSVG(
   const width = Number.isFinite(pixelWidth) ? Math.max(1, Math.round(pixelWidth!)) : s.width;
   const height = Number.isFinite(pixelHeight) ? Math.max(1, Math.round(pixelHeight!)) : s.height;
   const ellipses = layout.ellipses
-    .map(
-      (l) =>
-        `<ellipse cx="${l.x.toFixed(2)}" cy="${l.y.toFixed(2)}" rx="${l.rx.toFixed(2)}" ry="${l.ry.toFixed(2)}"/>`,
+    .map((l) =>
+      s.bottomFlattening > 0
+        ? flattenedContour(l, layout.ellipses[0], s)
+        : `<ellipse cx="${l.x.toFixed(2)}" cy="${l.y.toFixed(2)}" rx="${l.rx.toFixed(2)}" ry="${l.ry.toFixed(2)}"/>`,
     )
     .join('');
   const f = layout.frame,
     frequency = s.frequency;
-  // A seeded cloud meets a soft base plane before crop detection and lighting.
-  // Zero emits the original SVG unchanged, including its wispy lower silhouette.
-  let baseMask = '';
+  let baseNoise = '';
   if (s.bottomFlattening > 0) {
     const base = layout.ellipses[0];
-    const start =
-      Math.max(...layout.ellipses.map((l) => l.y + l.ry)) +
-      s.softness * 2 +
-      s.displacement * 0.2 +
-      4;
-    const end = base.y + base.ry * 0.4;
-    const t = Math.pow(s.bottomFlattening / 100, 0.65);
-    const plane = start + (end - start) * t;
-    const feather = Math.max(2, s.softness * (1 - t * 0.75));
-    baseMask = `<linearGradient id="base-fade" gradientUnits="userSpaceOnUse" x1="0" y1="${plane - feather}" x2="0" y2="${plane + feather}"><stop stop-color="white" stop-opacity="1"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient><mask id="flat-base" maskUnits="userSpaceOnUse" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}"><rect x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" fill="url(#base-fade)"/></mask>`;
+    const pivot = base.y - base.ry * 0.7;
+    // Blend the displacement field toward neutral near the compressed base.
+    // This changes the density contours, never clips the finished cloud alpha.
+    const gradient = `<svg xmlns="http://www.w3.org/2000/svg" width="${f.width}" height="${f.height}" viewBox="${f.x} ${f.y} ${f.width} ${f.height}"><defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="${pivot - 35}" x2="0" y2="${pivot + 30}"><stop stop-color="white" stop-opacity="0"/><stop offset="1" stop-color="white" stop-opacity="${(s.bottomFlattening / 100) * 0.8}"/></linearGradient></defs><rect x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" fill="url(#g)"/></svg>`;
+    baseNoise = `<feImage href="data:image/svg+xml,${encodeURIComponent(gradient)}" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" preserveAspectRatio="none" result="baseBlend"/><feComposite in="noise" in2="baseBlend" operator="out" result="roughNoise"/><feFlood flood-color="rgb(50%,50%,50%)" result="neutral"/><feComposite in="neutral" in2="baseBlend" operator="in" result="softNoise"/><feComposite in="roughNoise" in2="softNoise" operator="arithmetic" k2="1" k3="1" result="baseNoise"/>`;
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${frame.x} ${frame.y} ${frame.width} ${frame.height}" preserveAspectRatio="${crop ? 'none' : 'xMidYMid meet'}">
 <defs><filter id="cloud" x="${f.x}" y="${f.y}" width="${f.width}" height="${f.height}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feGaussianBlur in="SourceGraphic" stdDeviation="${layout.blur}" result="soft"/>
 <feTurbulence type="fractalNoise" baseFrequency="${frequency}" numOctaves="${s.octaves}" seed="${s.seed}" result="noise"/>
-<feDisplacementMap in="soft" in2="noise" scale="${layout.displacement}" xChannelSelector="R" yChannelSelector="G"/>
-</filter>${baseMask}</defs>
+${baseNoise}<feDisplacementMap in="soft" in2="${baseNoise ? 'baseNoise' : 'noise'}" scale="${layout.displacement}" xChannelSelector="R" yChannelSelector="G"/>
+</filter></defs>
 ${s.background === 'sky' ? `<rect id="sky" x="${frame.x}" y="${frame.y}" width="${frame.width}" height="${frame.height}" fill="${s.sky}"/>` : ''}
-<g fill="${s.color}" opacity="${s.opacity / 100}" filter="url(#cloud)"${baseMask ? ' mask="url(#flat-base)"' : ''}>${ellipses}</g></svg>`;
+<g fill="${s.color}" opacity="${s.opacity / 100}" filter="url(#cloud)">${ellipses}</g></svg>`;
 }

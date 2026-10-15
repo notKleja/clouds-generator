@@ -5,6 +5,7 @@ export class ResizeMotion {
   private frame?: number;
   private originalStyle: string | null | undefined;
   private target?: PreviewRect;
+  private anchor?: PreviewRect;
   private reduced = matchMedia('(prefers-reduced-motion: reduce)');
   constructor(
     private canvas: HTMLCanvasElement,
@@ -30,6 +31,7 @@ export class ResizeMotion {
     if (this.originalStyle === undefined) this.originalStyle = this.canvas.getAttribute('style');
     this.cancel();
     this.write(current);
+    this.anchor = current;
     this.changed();
   }
   drag(target: PreviewRect) {
@@ -40,7 +42,19 @@ export class ResizeMotion {
       )
     )
       return;
-    this.move(this.rect(), target, false);
+    this.target = target;
+    if (this.frame !== undefined) return;
+    this.frame = requestAnimationFrame(() => {
+      this.frame = undefined;
+      const next = this.target,
+        anchor = this.anchor;
+      if (!next || !anchor) return;
+      // One compositor transform per frame tracks the latest pointer without
+      // restarting an easing curve or reallocating the displayed canvas.
+      this.canvas.style.transformOrigin = '0 0';
+      this.canvas.style.transform = `translate(${next.left - anchor.left}px, ${next.top - anchor.top}px) scale(${next.width / anchor.width}, ${next.height / anchor.height})`;
+      this.changed();
+    });
   }
   release(aspect: number) {
     if (this.originalStyle === undefined) return;

@@ -178,6 +178,9 @@ export class ShapeEditor {
       this.position();
     });
   }
+  get resizing() {
+    return !!this.active?.edge;
+  }
   get viewport() {
     return this.active?.edge ? undefined : this.active?.crop;
   }
