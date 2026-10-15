@@ -15,7 +15,7 @@
     "test:preview-controls": "node tests/preview-controls.mjs && node tests/pointer-probe.mjs",
     "test:procedural": "node tests/procedural.mjs",
     "test:motion": "node tests/resize-motion.mjs",
-    "test:flatten": "node tests/flatten-bottom.mjs",
+    "test:flatten": "node tests/flatten-bottom.mjs && node tests/flatten-inheritance.mjs",
     "test:resize": "npm run build:all && node tests/resize-editor.mjs",
     "test:shape": "node tests/shape-editor.mjs",
     "test:update": "node tests/update-flow.mjs",
